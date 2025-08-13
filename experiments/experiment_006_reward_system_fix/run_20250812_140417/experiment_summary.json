@@ -1,0 +1,15 @@
+{
+  "experiment_id": "006",
+  "timestamp": "20250812_140417",
+  "success": false,
+  "key_metrics": {
+    "execution_time": "20250812_140417",
+    "total_stages": 1,
+    "successful_stages": 0,
+    "failed_stages": 1,
+    "overall_success": false,
+    "key_achievements": [],
+    "main_issues": []
+  },
+  "run_directory": "E:\\tensortrade\\experiments\\experiment_006_reward_system_fix\\run_20250812_140417"
+}

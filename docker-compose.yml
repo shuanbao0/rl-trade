@@ -1,0 +1,186 @@
+# TensorTrade强化学习交易系统 Docker Compose配置
+# 支持单机和分布式部署
+
+version: '3.8'
+
+services:
+  # Redis服务 - 用于Ray集群通信
+  redis:
+    image: redis:7-alpine
+    container_name: tensortrade_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - tensortrade_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Ray Head节点
+  ray_head:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tensortrade_ray_head
+    ports:
+      - "8265:8265"  # Ray Dashboard
+      - "10001:10001"  # Ray Client
+    environment:
+      - RAY_HEAD_NODE=true
+      - RAY_REDIS_ADDRESS=redis:6379
+      - RAY_DISABLE_IMPORT_WARNING=1
+      - RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE=1
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./data_cache:/app/data_cache
+      - ./results:/app/results
+      - ./reports:/app/reports
+      - ./configs:/app/configs
+    networks:
+      - tensortrade_network
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: >
+      bash -c "
+        ray start --head --redis-address=redis:6379 --dashboard-host=0.0.0.0 --dashboard-port=8265 --block
+      "
+    healthcheck:
+      test: ["CMD", "python", "-c", "import ray; ray.init(address='auto'); print('Ray OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # TensorTrade主应用
+  tensortrade_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tensortrade_app
+    ports:
+      - "8000:8000"  # FastAPI服务
+    environment:
+      - RAY_ADDRESS=ray_head:10001
+      - RAY_DISABLE_IMPORT_WARNING=1
+      - TENSORTRADE_ENV=production
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./data_cache:/app/data_cache
+      - ./results:/app/results
+      - ./reports:/app/reports
+      - ./configs:/app/configs
+    networks:
+      - tensortrade_network
+    depends_on:
+      - ray_head
+    restart: unless-stopped
+    command: >
+      bash -c "
+        sleep 30 &&
+        python -m uvicorn api:app --host 0.0.0.0 --port 8000
+      "
+
+  # Ray Worker节点 (可选，用于扩展计算能力)
+  ray_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - RAY_HEAD_ADDRESS=ray_head:10001
+      - RAY_DISABLE_IMPORT_WARNING=1
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+    networks:
+      - tensortrade_network
+    depends_on:
+      - ray_head
+    restart: unless-stopped
+    command: >
+      bash -c "
+        sleep 45 &&
+        ray start --address=ray_head:10001 --block
+      "
+    deploy:
+      replicas: 0  # 默认不启动，需要时可以扩展
+
+  # 监控服务 - Prometheus (可选)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: tensortrade_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - tensortrade_network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # 监控界面 - Grafana (可选)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tensortrade_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+    networks:
+      - tensortrade_network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Jupyter Lab服务 (开发环境)
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tensortrade_jupyter
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=tensortrade2024
+    volumes:
+      - .:/app
+      - ./notebooks:/app/notebooks
+    networks:
+      - tensortrade_network
+    restart: unless-stopped
+    command: >
+      bash -c "
+        pip install jupyterlab &&
+        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=tensortrade2024
+      "
+    profiles:
+      - development
+
+volumes:
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  tensortrade_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

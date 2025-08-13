@@ -1,0 +1,397 @@
+{
+  "experiment_metadata": {
+    "experiment_id": "006",
+    "name": "reward_system_fix_and_eurusd_optimization",
+    "description": "奖励函数系统修复与EURUSD外汇交易优化",
+    "version": "1.0.0",
+    "primary_objective": "解决奖励-回报脱钩问题，建立强相关性",
+    "secondary_objective": "EURUSD外汇交易性能优化",
+    "expected_correlation": "> 0.8",
+    "baseline_performance": "-65% (实验005)",
+    "research_hypothesis": "DirectPnLReward可以修复奖励-回报脱钩，实现EURUSD交易改进",
+    "success_criteria": {
+      "minimum_viable": {
+        "reward_return_correlation": 0.8,
+        "mean_return": -20,
+        "win_rate": 0.2
+      },
+      "target_performance": {
+        "reward_return_correlation": 0.9,
+        "mean_return": -10,
+        "win_rate": 0.3
+      },
+      "breakthrough_scenario": {
+        "reward_return_correlation": 0.95,
+        "mean_return": 0,
+        "win_rate": 0.45
+      }
+    }
+  },
+  
+  "data_configuration": {
+    "symbol": "EURUSD=X",
+    "data_source": "yfinance",
+    "periods": {
+      "stage1_validation": "6mo",
+      "stage2_optimization": "1y", 
+      "stage3_comprehensive": "2y"
+    },
+    "data_split": {
+      "train_ratio": 0.6,
+      "validation_ratio": 0.2,
+      "test_ratio": 0.2,
+      "split_method": "time_series_aware"
+    },
+    "data_preprocessing": {
+      "handle_missing": "forward_fill",
+      "outlier_handling": "clip_3sigma",
+      "normalization": "standard_scaling",
+      "feature_engineering": "forex_specialized"
+    }
+  },
+  
+  "feature_engineering": {
+    "feature_sets": {
+      "stage1_core": {
+        "name": "core_3",
+        "features": ["price_momentum", "volatility_regime", "trend_strength"],
+        "count": 3,
+        "description": "基础外汇特征，快速验证用"
+      },
+      "stage2_basic": {
+        "name": "basic_5", 
+        "features": ["price_momentum", "volatility_regime", "trend_strength", "session_activity", "support_resistance_distance"],
+        "count": 5,
+        "description": "基础外汇特征集，平衡性能和复杂度"
+      },
+      "stage3_enhanced": {
+        "name": "enhanced_10",
+        "features": ["price_momentum", "volatility_regime", "trend_strength", "session_activity", "support_resistance_distance", "currency_strength", "breakout_probability", "mean_reversion_signal", "volume_confirmation", "market_microstructure"],
+        "count": 10,
+        "description": "完整外汇特征集，最大化性能"
+      }
+    },
+    "forex_specific_parameters": {
+      "pip_value": 0.0001,
+      "typical_spread": 1.2,
+      "trading_sessions": {
+        "asian": {"start": 0, "end": 8},
+        "london": {"start": 8, "end": 16}, 
+        "new_york": {"start": 13, "end": 21}
+      },
+      "normalization_range": [-1, 1],
+      "feature_stability_checks": true
+    }
+  },
+  
+  "reward_function_configuration": {
+    "reward_type": "direct_pnl",
+    "reward_class": "DirectPnLReward",
+    "parameters": {
+      "initial_balance": 10000.0,
+      "transaction_cost_rate": 0.0002,
+      "position_penalty_rate": 0.001,
+      "reward_scale": 100,
+      "clip_range": [-10.0, 10.0],
+      "correlation_monitoring": true,
+      "correlation_threshold": 0.8
+    },
+    "monitoring": {
+      "enable_correlation_monitor": true,
+      "correlation_update_frequency": 10,
+      "correlation_window_size": 100,
+      "alert_thresholds": {
+        "warning": 0.6,
+        "critical": 0.4
+      }
+    },
+    "validation": {
+      "expected_correlation": 0.8,
+      "reward_range_validation": true,
+      "numerical_stability_checks": true
+    }
+  },
+  
+  "training_configuration": {
+    "algorithm": "PPO",
+    "framework": "stable_baselines3",
+    "stage_specific_hyperparameters": {
+      "stage1_reward_fix": {
+        "total_timesteps": 500000,
+        "learning_rate": 3e-4,
+        "n_steps": 1024,
+        "batch_size": 64,
+        "gamma": 0.99,
+        "policy_kwargs": {"net_arch": [64, 64]},
+        "verbose": 1,
+        "eval_freq": 50000,
+        "n_eval_episodes": 10
+      },
+      "stage2_forex_optimization": {
+        "total_timesteps": 1000000,
+        "learning_rate": 1e-4,
+        "n_steps": 2048,
+        "batch_size": 128,
+        "gamma": 0.995,
+        "policy_kwargs": {"net_arch": [128, 128]},
+        "verbose": 1,
+        "eval_freq": 100000,
+        "n_eval_episodes": 15
+      },
+      "stage3_system_optimization": {
+        "total_timesteps": 1500000,
+        "learning_rate": 5e-5,
+        "n_steps": 3072,
+        "batch_size": 256,
+        "gamma": 0.998,
+        "policy_kwargs": {"net_arch": [256, 128, 64]},
+        "verbose": 1,
+        "eval_freq": 150000,
+        "n_eval_episodes": 20
+      }
+    },
+    "early_stopping": {
+      "enabled": true,
+      "patience": 5,
+      "min_delta": 0.01,
+      "monitor_metric": "reward_return_correlation"
+    },
+    "checkpointing": {
+      "save_frequency": 100000,
+      "keep_best_models": 5,
+      "save_path_template": "stage{stage}_{algorithm}_{timestamp}"
+    }
+  },
+  
+  "environment_configuration": {
+    "environment_class": "TradingEnvironment",
+    "initial_balance": 10000.0,
+    "commission": 0.0002,
+    "slippage": 0.0001,
+    "position_limits": {
+      "max_position": 1.0,
+      "min_position": -1.0
+    },
+    "risk_management": {
+      "max_drawdown": 0.5,
+      "position_sizing": "dynamic",
+      "stop_loss": null,
+      "take_profit": null
+    },
+    "forex_specific": {
+      "leverage": 30,
+      "margin_requirement": 0.033,
+      "overnight_rates": true,
+      "weekend_gaps": false
+    }
+  },
+  
+  "validation_configuration": {
+    "validation_method": "time_series_aware",
+    "cross_validation": {
+      "enabled": true,
+      "method": "walk_forward",
+      "n_splits": 5,
+      "window_size": 1500,
+      "step_size": 300
+    },
+    "monte_carlo_validation": {
+      "enabled": true,
+      "n_runs": 5,
+      "random_seed_base": 42
+    },
+    "out_of_sample_testing": {
+      "enabled": true,
+      "test_size": 0.2,
+      "strict_temporal_split": true
+    },
+    "overfitting_detection": {
+      "train_val_gap_threshold": 0.2,
+      "performance_consistency_check": true,
+      "stability_analysis": true
+    }
+  },
+  
+  "monitoring_and_logging": {
+    "logging_level": "INFO",
+    "log_to_file": true,
+    "log_file_path": "logs/experiment_006_{timestamp}.log",
+    "metrics_tracking": {
+      "enabled": true,
+      "track_correlation": true,
+      "track_performance": true,
+      "track_stability": true,
+      "update_frequency": 100
+    },
+    "real_time_monitoring": {
+      "correlation_monitor": true,
+      "performance_dashboard": false,
+      "alert_system": true
+    },
+    "experiment_artifacts": {
+      "save_models": true,
+      "save_plots": true,
+      "save_metrics": true,
+      "save_configuration": true,
+      "results_format": ["json", "csv", "pickle"]
+    }
+  },
+  
+  "comparison_and_analysis": {
+    "baseline_experiments": [
+      "experiment_003A_simple_features",
+      "experiment_004_enhanced_features",
+      "experiment_005_progressive_features"
+    ],
+    "comparison_metrics": [
+      "mean_return",
+      "win_rate", 
+      "sharpe_ratio",
+      "max_drawdown",
+      "reward_return_correlation"
+    ],
+    "statistical_testing": {
+      "enabled": true,
+      "significance_level": 0.05,
+      "test_methods": ["t_test", "mann_whitney_u"]
+    }
+  },
+  
+  "stage_execution_config": {
+    "stage1_reward_fix_validation": {
+      "name": "奖励函数修复验证",
+      "duration_estimate": "45 minutes",
+      "primary_objective": "验证奖励-回报相关性 > 0.8",
+      "success_criteria": {
+        "reward_return_correlation": 0.8,
+        "training_convergence": true,
+        "no_infinite_values": true,
+        "mean_return_improvement": -50
+      },
+      "failure_conditions": {
+        "correlation_below_threshold": 0.6,
+        "training_divergence": true,
+        "extreme_performance": -80
+      },
+      "next_stage_conditions": {
+        "correlation_threshold": 0.75,
+        "basic_convergence": true
+      }
+    },
+    "stage2_forex_specialization": {
+      "name": "EURUSD外汇专业化改进",
+      "duration_estimate": "90 minutes",
+      "primary_objective": "保持相关性 + 提升交易性能",
+      "success_criteria": {
+        "correlation_maintained": 0.75,
+        "performance_improved": -30,
+        "win_rate_positive": 0.15
+      },
+      "forex_specific_targets": {
+        "pip_based_performance": true,
+        "session_awareness": true,
+        "volatility_adaptation": true
+      }
+    },
+    "stage3_system_optimization": {
+      "name": "系统优化和完善",
+      "duration_estimate": "2 hours",
+      "primary_objective": "系统整体最优化",
+      "comprehensive_validation": true,
+      "final_success_criteria": {
+        "correlation_excellent": 0.8,
+        "test_performance_acceptable": -20,
+        "generalization_validated": true,
+        "production_ready": true
+      }
+    }
+  },
+  
+  "infrastructure_configuration": {
+    "compute_requirements": {
+      "cpu_cores": 4,
+      "memory_gb": 8,
+      "gpu_required": false,
+      "estimated_total_time": "4-6 hours"
+    },
+    "storage_requirements": {
+      "data_storage_mb": 100,
+      "model_storage_mb": 500,
+      "logs_storage_mb": 50,
+      "total_storage_mb": 1000
+    },
+    "dependencies": {
+      "python_version": "3.11+",
+      "key_packages": [
+        "stable-baselines3>=2.0.0",
+        "gymnasium>=0.26.0",
+        "pandas>=1.5.0",
+        "numpy>=1.21.0",
+        "matplotlib>=3.5.0",
+        "yfinance>=0.2.0"
+      ]
+    }
+  },
+  
+  "risk_management": {
+    "experiment_risks": {
+      "reward_fix_failure": {
+        "probability": "MEDIUM",
+        "impact": "HIGH",
+        "mitigation": "Fallback to simplest percentage_change reward"
+      },
+      "forex_adaptation_failure": {
+        "probability": "LOW", 
+        "impact": "MEDIUM",
+        "mitigation": "Focus on basic features, reduce complexity"
+      },
+      "persistent_overfitting": {
+        "probability": "LOW",
+        "impact": "HIGH", 
+        "mitigation": "Extreme model simplification, diagnostic analysis"
+      },
+      "computational_resource_limit": {
+        "probability": "LOW",
+        "impact": "MEDIUM",
+        "mitigation": "Reduce training steps, use smaller models"
+      }
+    },
+    "quality_assurance": {
+      "code_review_required": false,
+      "manual_validation_steps": [
+        "验证奖励函数数学正确性",
+        "检查特征工程输出合理性", 
+        "确认时间序列分割无泄露",
+        "验证相关性计算准确性"
+      ],
+      "automated_tests": [
+        "单元测试覆盖关键组件",
+        "集成测试验证完整流程",
+        "回归测试确保一致性"
+      ]
+    }
+  },
+  
+  "reporting_and_documentation": {
+    "automated_reporting": {
+      "stage_reports": true,
+      "correlation_analysis_report": true,
+      "performance_comparison_report": true,
+      "final_comprehensive_report": true
+    },
+    "visualization": {
+      "correlation_trends_plot": true,
+      "performance_comparison_plot": true,
+      "feature_importance_plot": true,
+      "training_curves_plot": true
+    },
+    "documentation_outputs": {
+      "experiment_log": "详细的执行日志",
+      "results_summary": "结果摘要和关键发现",
+      "methodology_documentation": "方法论和设计决策记录",
+      "future_work_recommendations": "后续研究方向建议"
+    }
+  }
+}
+
+

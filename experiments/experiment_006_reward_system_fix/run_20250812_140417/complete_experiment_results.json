@@ -1,0 +1,55 @@
+{
+  "experiment_metadata": {
+    "experiment_id": "006",
+    "name": "reward_system_fix_and_eurusd_optimization",
+    "description": "奖励函数系统修复与EURUSD外汇交易优化",
+    "version": "1.0.0",
+    "primary_objective": "解决奖励-回报脱钩问题，建立强相关性",
+    "secondary_objective": "EURUSD外汇交易性能优化",
+    "expected_correlation": "> 0.8",
+    "baseline_performance": "-65% (实验005)",
+    "research_hypothesis": "DirectPnLReward可以修复奖励-回报脱钩，实现EURUSD交易改进",
+    "success_criteria": {
+      "minimum_viable": {
+        "reward_return_correlation": 0.8,
+        "mean_return": -20,
+        "win_rate": 0.2
+      },
+      "target_performance": {
+        "reward_return_correlation": 0.9,
+        "mean_return": -10,
+        "win_rate": 0.3
+      },
+      "breakthrough_scenario": {
+        "reward_return_correlation": 0.95,
+        "mean_return": 0,
+        "win_rate": 0.45
+      }
+    }
+  },
+  "execution_config": {
+    "detailed_analysis": false,
+    "quick_validation": false,
+    "execution_timestamp": "20250812_140417",
+    "run_directory": "E:\\tensortrade\\experiments\\experiment_006_reward_system_fix\\run_20250812_140417"
+  },
+  "stage_results": {
+    "stage1": {
+      "success": false,
+      "stage": "reward_function_fix_validation",
+      "error": "'StableBaselinesTrainer' object has no attribute 'evaluate_model'",
+      "duration": "0:25:25.242142"
+    }
+  },
+  "final_analysis": {},
+  "execution_summary": {
+    "execution_time": "20250812_140417",
+    "total_stages": 1,
+    "successful_stages": 0,
+    "failed_stages": 1,
+    "overall_success": false,
+    "key_achievements": [],
+    "main_issues": []
+  },
+  "training_success": false
+}

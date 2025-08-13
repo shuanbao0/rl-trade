@@ -1,0 +1,175 @@
+{
+  "experiment_info": {
+    "name": "Experiment #005: Progressive Feature Selection",
+    "description": "解决实验004问题的渐进式特征选择系统",
+    "version": "1.0",
+    "created_date": "2025-08-12",
+    "objectives": [
+      "解决维数灾难：避免117特征过拟合",
+      "解决奖励-回报不一致：使用OptimizedForexReward", 
+      "科学特征选择：基于统计显著性检验",
+      "渐进式验证：3→10→20特征逐步改进"
+    ]
+  },
+  
+  "experiment_004_problems": {
+    "issues_identified": [
+      {
+        "problem": "维数灾难",
+        "description": "117特征导致过拟合，性能下降",
+        "evidence": "训练困难，泛化能力差"
+      },
+      {
+        "problem": "奖励-回报不一致",  
+        "description": "奖励值+94542但实际回报-43.69%",
+        "evidence": "奖励函数与实际表现完全不符"
+      },
+      {
+        "problem": "特征质量未验证",
+        "description": "117个特征全部使用，未评估有效性", 
+        "evidence": "缺乏科学的特征选择方法"
+      }
+    ]
+  },
+  
+  "experiment_005_solutions": {
+    "approaches": [
+      {
+        "solution": "渐进式特征增长",
+        "method": "3→10→20特征的阶段性增长",
+        "benefit": "避免维数灾难，确保每阶段可控"
+      },
+      {
+        "solution": "OptimizedForexReward奖励函数",
+        "method": "确保奖励-回报相关性>0.8",
+        "benefit": "解决奖励与实际表现不一致问题"
+      },
+      {
+        "solution": "FeatureEvaluator科学评估",
+        "method": "6维评估+统计显著性检验",
+        "benefit": "确保每个特征都有统计意义"
+      },
+      {
+        "solution": "阶段性验证",
+        "method": "每个阶段独立训练和评估",
+        "benefit": "建立性能基准，验证改进效果"
+      }
+    ]
+  },
+  
+  "training_stages": {
+    "stage_1": {
+      "name": "基准阶段",
+      "features": 3,
+      "description": "使用基础特征建立性能基准",
+      "features_list": ["Close", "SMA_14", "RSI_14"],
+      "iterations": 100,
+      "expected_outcome": "建立稳定的性能基准"
+    },
+    "stage_2": {
+      "name": "扩展阶段", 
+      "features": 10,
+      "description": "基于FeatureEvaluator选择最优特征扩展至10个",
+      "selection_method": "统计显著性检验+6维评估",
+      "iterations": 120,
+      "expected_outcome": "验证科学特征选择的改进效果"
+    },
+    "stage_3": {
+      "name": "优化阶段",
+      "features": 20, 
+      "description": "最终特征组合，达到性能-复杂度最佳平衡",
+      "selection_method": "完整的FeatureEvaluator评估流程",
+      "iterations": 150,
+      "expected_outcome": "达到最佳性能同时避免过拟合"
+    }
+  },
+  
+  "reward_function_config": {
+    "type": "optimized_forex_reward",
+    "parameters": {
+      "return_weight": 1.0,
+      "risk_penalty": 0.1, 
+      "transaction_cost": 0.0001,
+      "correlation_threshold": 0.8,
+      "stability_window": 20,
+      "volatility_adjustment": true,
+      "clip_range": [-1.0, 1.0]
+    },
+    "improvements": [
+      "确保奖励-回报相关性>0.8",
+      "实时监控奖励一致性",
+      "数值稳定性控制", 
+      "外汇交易特殊优化"
+    ]
+  },
+  
+  "feature_evaluation_config": {
+    "evaluator": "FeatureEvaluator",
+    "evaluation_dimensions": {
+      "performance": {"weight": 0.30, "description": "性能改进"},
+      "significance": {"weight": 0.20, "description": "统计显著性"},
+      "importance": {"weight": 0.20, "description": "特征重要性"},
+      "redundancy": {"weight": 0.15, "description": "冗余度控制"}, 
+      "cost": {"weight": 0.10, "description": "计算成本"},
+      "theory": {"weight": 0.05, "description": "理论支持"}
+    },
+    "thresholds": {
+      "significance_alpha": 0.05,
+      "min_effect_size": 0.2,
+      "acceptance_score": 0.6,
+      "correlation_threshold": 0.7
+    }
+  },
+  
+  "evaluation_metrics": {
+    "performance_metrics": [
+      "mean_return",
+      "sharpe_ratio", 
+      "max_drawdown",
+      "total_return",
+      "win_rate"
+    ],
+    "consistency_metrics": [
+      "reward_return_correlation",
+      "reward_stability",
+      "performance_stability"
+    ],
+    "comparison_metrics": [
+      "improvement_vs_baseline",
+      "improvement_vs_experiment_004",
+      "feature_efficiency"
+    ]
+  },
+  
+  "expected_outcomes": {
+    "primary_goals": [
+      "解决实验004的维数灾难问题",
+      "确保奖励-回报一致性>0.8",
+      "建立科学的特征选择标准",
+      "验证渐进式改进的有效性"
+    ],
+    "performance_targets": [
+      "避免过拟合，性能更稳定",
+      "训练效率提升（20 vs 117特征）", 
+      "奖励与回报高度相关",
+      "每个特征都有统计意义"
+    ],
+    "scientific_contributions": [
+      "建立特征选择的统计标准",
+      "验证渐进式训练的有效性",
+      "解决高维特征空间的训练难题",
+      "为外汇交易RL提供科学方法论"
+    ]
+  },
+  
+  "technical_specifications": {
+    "symbol": "EURUSD=X",
+    "data_period": "2y",
+    "algorithm": "PPO",
+    "environment": "TradingEnvironment", 
+    "framework": "Stable-Baselines3",
+    "evaluation_episodes": 30,
+    "base_features": ["Close", "SMA_14", "RSI_14"],
+    "max_features": 20
+  }
+}

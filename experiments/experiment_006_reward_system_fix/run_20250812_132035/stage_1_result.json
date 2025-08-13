@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "stage": "reward_function_fix_validation",
+  "error": "TradingEnvironment.__init__() got an unexpected keyword argument 'data'",
+  "duration": "0:00:04.949357"
+}

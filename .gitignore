@@ -1,0 +1,424 @@
+# TensorTrade Project .gitignore
+# Created: 2025-08-07
+# Purpose: Comprehensive ignore patterns for TensorTrade quantitative trading system
+
+# =============================================================================
+# Python
+# =============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+test-results/
+test-reports/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# =============================================================================
+# Machine Learning & Data Science
+# =============================================================================
+# Data files
+*.csv
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.parquet
+*.feather
+
+# Model files
+*.joblib
+*.model
+*.pkl
+*.pth
+*.pt
+*.ckpt
+*.pb
+*.tflite
+*.onnx
+
+# Jupyter notebook outputs
+*.ipynb
+
+# MLflow
+mlruns/
+.mlflow/
+
+# Weights & Biases
+wandb/
+
+# TensorBoard logs
+logs/
+runs/
+tensorboard_logs/
+
+# Ray Tune results
+ray_results/
+
+# =============================================================================
+# TensorTrade Specific
+# =============================================================================
+# Data cache and datasets
+data_cache/
+datasets/
+*.cache
+
+# Model storage
+models/
+checkpoints/
+checkpoint_*/
+saved_models/
+rlhf_models/
+
+# Results and outputs
+results/
+output/
+reports/
+evaluation_results/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+rlhf_feedback.db
+test_expert_feedback.db
+
+# Configuration files with sensitive data
+config_local.py
+config_prod.py
+.env.local
+.env.production
+
+# RLHF training data
+human_feedback/
+preference_data/
+expert_annotations/
+
+# =============================================================================
+# Development Tools
+# =============================================================================
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# =============================================================================
+# Operating System
+# =============================================================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+.nfs*
+
+# =============================================================================
+# Docker & Deployment
+# =============================================================================
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Kubernetes
+*.kubeconfig
+
+# =============================================================================
+# Monitoring & Observability
+# =============================================================================
+# Prometheus
+prometheus_data/
+
+# Grafana
+grafana_data/
+
+# =============================================================================
+# Financial Data & Security
+# =============================================================================
+# API Keys and secrets
+api_keys.txt
+secrets.yaml
+credentials.json
+.credentials/
+*.pem
+*.key
+*.crt
+
+# Trading data
+trade_history/
+portfolio_data/
+market_data/
+
+# Broker configurations
+broker_config_prod.json
+live_trading_config.json
+
+# =============================================================================
+# Temporary and Debug Files
+# =============================================================================
+# Debug files
+debug_*.py
+debug_*.txt
+debug_output/
+
+# Test files in wrong locations
+test_*.py  # Only in root directory
+example_*.py  # Only in root directory
+benchmark_*.py  # Only in root directory
+
+# Temporary Python files
+*.pyc.tmp
+*.py.bak
+
+# Profile outputs
+*.prof
+*.profile
+
+# =============================================================================
+# Documentation Build
+# =============================================================================
+# Sphinx
+_build/
+_static/
+_templates/
+
+# =============================================================================
+# Package Managers
+# =============================================================================
+# npm
+node_modules/
+npm-debug.log*
+
+# Conda
+.conda/
+
+# =============================================================================
+# Cloud & CI/CD
+# =============================================================================
+# AWS
+.aws/
+
+# Google Cloud
+.gcloud/
+
+# Azure
+.azure/
+
+# GitHub Actions artifacts
+.github/workflows/*.log
+
+# =============================================================================
+# Custom Exclusions for This Project
+# =============================================================================
+# Large model files (use Git LFS instead)
+*.bin
+*.safetensors
+
+# Compiled extensions
+*.pyd
+*.dll
+
+# Backup files
+*.backup
+*.bak
+
+# Lock files
+poetry.lock
+Pipfile.lock
+
+# IDE specific
+.vscode/settings.json
+.vscode/launch.json
+
+# Project specific temp files
+todo_*.md
+progress_*.md
+status_*.md
+
+# Performance profiling
+*.cprof
+*.prof
+profiling_results/
+
+# Memory dumps
+*.dmp
+core.*
+
+# Large log files
+*.log.*
+*.log.gz
+
+data_cache/
+datasets/
+.pytest_cache/
+.idea/
+logs/
+evalustion_results/
+models/
