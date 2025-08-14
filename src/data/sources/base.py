@@ -13,49 +13,49 @@ import logging
 
 class DataInterval(Enum):
     """数据间隔枚举"""
-    TICK = "tick"
-    SECOND_1 = "1s"
-    SECOND_5 = "5s"
-    SECOND_15 = "15s"  
-    SECOND_30 = "30s"
-    MINUTE_1 = "1m"
-    MINUTE_2 = "2m"
-    MINUTE_5 = "5m"
-    MINUTE_15 = "15m"
-    MINUTE_30 = "30m"
-    MINUTE_90 = "90m"
-    HOUR_1 = "1h"
-    HOUR_4 = "4h"
-    HOUR_6 = "6h"
-    HOUR_8 = "8h"
-    HOUR_12 = "12h"
-    DAY_1 = "1d"
-    DAY_3 = "3d"
-    WEEK_1 = "1w"
-    MONTH_1 = "1M"
-    MONTH_3 = "3M"
-    YEAR_1 = "1Y"
+    TICK = "tick"          # Tick级数据（最高频）
+    SECOND_1 = "1s"        # 1秒K线
+    SECOND_5 = "5s"        # 5秒K线
+    SECOND_15 = "15s"      # 15秒K线
+    SECOND_30 = "30s"      # 30秒K线
+    MINUTE_1 = "1m"        # 1分钟K线
+    MINUTE_2 = "2m"        # 2分钟K线
+    MINUTE_5 = "5m"        # 5分钟K线
+    MINUTE_15 = "15m"      # 15分钟K线
+    MINUTE_30 = "30m"      # 30分钟K线
+    MINUTE_90 = "90m"      # 90分钟K线
+    HOUR_1 = "1h"          # 1小时K线
+    HOUR_4 = "4h"          # 4小时K线
+    HOUR_6 = "6h"          # 6小时K线
+    HOUR_8 = "8h"          # 8小时K线
+    HOUR_12 = "12h"        # 12小时K线
+    DAY_1 = "1d"           # 日K线
+    DAY_3 = "3d"           # 3日K线
+    WEEK_1 = "1w"          # 周K线
+    MONTH_1 = "1M"         # 月K线
+    MONTH_3 = "3M"         # 季度K线
+    YEAR_1 = "1Y"          # 年K线
 
 
 class MarketType(Enum):
     """市场类型枚举"""
-    STOCK = "stock"
-    FOREX = "forex"  
-    CRYPTO = "crypto"
-    FUTURES = "futures"
-    OPTIONS = "options"
-    COMMODITIES = "commodities"
-    BONDS = "bonds"
-    INDEX = "index"
-    ETF = "etf"
+    STOCK = "stock"               # 股票市场
+    FOREX = "forex"               # 外汇市场
+    CRYPTO = "crypto"             # 加密货币市场
+    FUTURES = "futures"           # 期货市场
+    OPTIONS = "options"           # 期权市场
+    COMMODITIES = "commodities"   # 商品市场
+    BONDS = "bonds"               # 债券市场
+    INDEX = "index"               # 指数
+    ETF = "etf"                   # 交易所交易基金
 
 
 class DataQuality(Enum):
     """数据质量等级"""
-    HIGH = "high"        # 高质量：官方API，实时更新
-    MEDIUM = "medium"    # 中等质量：延迟较小，数据完整
-    LOW = "low"         # 低质量：延迟较大，可能有缺失
-    UNKNOWN = "unknown"  # 未知质量
+    HIGH = "high"        # 高质量：官方API，实时更新，数据准确
+    MEDIUM = "medium"    # 中等质量：延迟较小，数据完整性良好
+    LOW = "low"         # 低质量：延迟较大，可能有数据缺失
+    UNKNOWN = "unknown"  # 未知质量：无法确定数据质量等级
 
 
 @dataclass

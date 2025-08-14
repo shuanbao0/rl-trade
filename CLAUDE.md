@@ -38,6 +38,16 @@ python download_data.py --symbol AAPL --period 2y
 
 # Evaluate trained model
 python evaluate_model.py --symbol AAPL --model-path experiments/AAPL_*/final_model.zip
+
+# Docker deployment commands
+docker-compose up -d  # Start all services
+docker-compose logs -f tensortrade_app  # View application logs
+docker-compose ps  # Check service status
+docker-compose down  # Stop all services
+
+# API service
+python api.py  # Start FastAPI web service
+uvicorn api:app --host 0.0.0.0 --port 8000  # Alternative start method
 ```
 
 ### Testing Commands
@@ -101,13 +111,44 @@ rm -rf data_cache/* logs/*
 - MinMaxScaler integration for normalization
 
 **Trading Environment (`src/environment/`)**
-- `TradingEnvironment`: Gymnasium-compatible RL environment
+- `TradingEnvironment`: Gymnasium-compatible RL environment replacing TensorTrade
+- Modern portfolio management with simplified state tracking
 - 17+ reward functions in `rewards/` including advanced AI-based rewards
 - Continuous action space [-1, 1] for position management
 - Custom reward functions: risk_adjusted, curiosity_driven, self_rewarding, etc.
+- Advanced reward components: RLHF (Human Feedback), multimodal analysis
+
+**Real-time Trading (`src/realtime/`)**
+- `real_time_trading_system.py`: Complete real-time trading system
+- `real_time_data_manager.py`: WebSocket live data feeds
+- `order_manager.py`: Trade execution and order management  
+- `broker_api.py`: Broker integration interface
+- `model_inference_service.py`: Real-time model prediction service
+
+**Risk Management (`src/risk/`)**
+- `risk_manager.py`: Multi-layer risk control system
+- Position sizing, drawdown, and loss limits
+- Real-time risk monitoring and alerts
+
+**Monitoring & Visualization (`src/monitoring/`, `src/visualization/`)**
+- `system_monitor.py`: System performance monitoring
+- `alert_manager.py`: Alert and notification system
+- `correlation_monitor.py`: Market correlation tracking
+- Comprehensive visualization suite for training and evaluation results
+
+**Validation (`src/validation/`)**
+- `walk_forward_validator.py`: Time-series forward validation
+- `time_series_validator.py`: Time series specific validation methods
+- Prevents data leakage with strict temporal splitting
+
+**Data Sources (`src/data/sources/`)**
+- Multiple data source adapters: yfinance, FXMinute, OANDA, TrueFX
+- `factory.py`: Data source factory pattern
+- `converter.py`: Unified data format conversion
+- Extensible architecture for adding new data providers
 
 **Utilities (`src/utils/`)**
-- `Config`: Environment variables and JSON config file support
+- `Config`: Three-tier configuration management (defaults → JSON → env vars)
 - `Logger`: Multi-level logging with console and file output
 - `data_utils`: Unified data processing utilities
 
@@ -138,19 +179,33 @@ The system includes 17 reward function types with 150+ aliases:
 
 ### Data Flow
 ```
-Raw Data (yfinance) → DataManager → Feature Engineering → TradingEnvironment → StableBaselinesTrainer
-                         ↓
-                    Cache System
-                         ↓
-                    Validation & Logging
+Multiple Data Sources (yfinance, FXMinute, OANDA) → Data Source Factory → DataManager
+                                                                              ↓
+                                                        Cache System (Memory + File)
+                                                                              ↓
+                                              Feature Engineering → TradingEnvironment
+                                                                              ↓
+                                            StableBaselinesTrainer ← Reward Functions (17 types)
+                                                                              ↓
+                                              Model Evaluation ← Risk Management
+                                                                              ↓
+                                               Real-time Trading ← Monitoring & Alerts
 ```
 
 ## Testing
-The project uses pytest with comprehensive test coverage:
-- Core modules: `test/utils/`, `test/environment/`, `test/training/`
-- Reward functions: `test/environment/rewards/`
-- Integration tests for complete training pipeline
-- Use the specific Python environment path for all test commands
+The project uses pytest with comprehensive test coverage across all modules:
+- **Core utilities**: `test/utils/` (config, logging, data utilities)
+- **Trading environment**: `test/environment/` (trading environment, rewards)
+- **Training system**: `test/training/` (Stable-Baselines3 trainer, optimization)
+- **Data management**: `test/data/` (data sources, caching, validation)
+- **Real-time components**: `test/realtime/` (trading systems, order management)
+- **Risk management**: `test/risk/` (risk controls, monitoring)
+- **Visualization**: `test/visualization/` (plotting, report generation)
+- **Feature engineering**: `test/features/` (technical indicators, transformations)
+- **Validation**: `test/validation/` (walk-forward, time-series validation)
+- **Monitoring**: `test/monitoring/` (system monitoring, alerts)
+
+Use the specific Python environment path for all test commands to ensure compatibility.
 
 ## Configuration
 Three-tier configuration approach:
@@ -159,27 +214,97 @@ Three-tier configuration approach:
 3. **Environment variables** that override other settings
 
 Key configuration sections:
-- `data`: Cache settings, timeouts, retry logic
-- `feature`: Technical indicator parameters (periods, thresholds)
-- `trading`: Initial balance, commission, position limits
-- `reward`: Reward function type and parameters
+- `data`: Cache settings, timeouts, retry logic, data source selection
+- `feature`: Technical indicator parameters (periods, thresholds), Forex-specific configs
+- `trading`: Initial balance, commission, position limits, action space settings
+- `reward`: Reward function type and parameters (17 different reward types supported)
+- `risk`: Position sizing, drawdown limits, loss controls
+- `realtime`: WebSocket settings, broker API configurations
+- `monitoring`: Alert thresholds, system monitoring parameters
 
 ## Important Notes
 - **Python Environment**: Uses tensortrade_modern conda environment with Python 3.11+
 - **Framework**: Fully migrated to Stable-Baselines3 (Ray RLlib removed)
-- **Dependencies**: Modern ML stack with PyTorch 2.5.1, Stable-Baselines3 2.7.0
-- **Training**: Supports PPO, SAC, DQN algorithms
-- **Rewards**: 17 advanced reward functions with AI enhancements
-- **Logging**: Automatic log file creation in `logs/` directory
-- **Caching**: Cache files in `data_cache/` with automatic cleanup
-- **Models**: Saved in `experiments/` and `models/` directories
+- **Dependencies**: Modern ML stack with PyTorch 2.5.1+cu121, Stable-Baselines3 2.7.0
+- **GPU Support**: CUDA 12.1+ with automatic GPU detection and usage
+- **Training**: Supports PPO, SAC, DQN algorithms with hyperparameter optimization
+- **Rewards**: 17 advanced reward functions including RLHF and multimodal components
+- **Data Sources**: Multiple providers (yfinance, FXMinute, OANDA, TrueFX)
+- **Logging**: Automatic log file creation in `logs/` directory with component-specific logs
+- **Caching**: Intelligent dual-layer caching (memory + file) in `data_cache/`
+- **Models**: Saved in timestamped directories under `experiments/` and `models/`
+- **Docker**: Full containerization support with Docker Compose
+- **API**: FastAPI web service for programmatic access
+- **Monitoring**: Integrated Prometheus + Grafana monitoring stack
 
 ## Development Status
-- ✅ Data Management Module (100% complete)
-- ✅ Feature Engineering Module (100% complete)
-- ✅ Trading Environment Module (100% complete)
-- ✅ Advanced Reward System (17 functions, 100% complete)
-- ✅ Stable-Baselines3 Training System (100% complete)
-- ✅ Utils Module (100% complete)
-- ✅ Testing Framework (comprehensive coverage)
-- ✅ Migration from Ray RLlib to Stable-Baselines3 (100% complete)
+- ✅ **Data Management Module** (100% complete) - Multi-source data fetching with intelligent caching
+- ✅ **Feature Engineering Module** (100% complete) - 35+ technical indicators with Forex optimization  
+- ✅ **Trading Environment Module** (100% complete) - Modern Gymnasium environment replacing TensorTrade
+- ✅ **Advanced Reward System** (100% complete) - 17 reward functions including RLHF and multimodal
+- ✅ **Stable-Baselines3 Training System** (100% complete) - PPO/SAC/DQN with optimization
+- ✅ **Real-time Trading System** (100% complete) - WebSocket feeds and order management
+- ✅ **Risk Management System** (100% complete) - Multi-layer risk controls and monitoring
+- ✅ **Validation Framework** (100% complete) - Walk-forward and time-series validation
+- ✅ **Visualization Suite** (100% complete) - Comprehensive plotting and analysis tools
+- ✅ **Monitoring & Alerting** (100% complete) - System monitoring with Prometheus/Grafana
+- ✅ **Utils & Configuration** (100% complete) - Advanced configuration management
+- ✅ **Testing Framework** (100% complete) - Comprehensive test coverage across all modules
+- ✅ **Docker & API Services** (100% complete) - Full containerization and FastAPI web service
+- ✅ **Migration from Ray RLlib to Stable-Baselines3** (100% complete)
+
+## Common Development Workflows
+
+### Adding New Reward Functions
+1. Create new reward class in `src/environment/rewards/`
+2. Inherit from `BaseReward` and implement required methods
+3. Register in `reward_factory.py` with aliases
+4. Add tests in `test/environment/rewards/`
+5. Update documentation in `docs/`
+
+### Adding New Data Sources
+1. Create source adapter in `src/data/sources/`
+2. Inherit from `BaseDataSource` 
+3. Implement data fetching and conversion methods
+4. Register in `factory.py`
+5. Add configuration options in `config.py`
+6. Add comprehensive tests
+
+### Training New Models
+1. Ensure data is available: `python download_data.py --symbol SYMBOL --period PERIOD`
+2. Configure reward function and hyperparameters
+3. Run training: `python main.py --mode train --symbol SYMBOL --iterations N`
+4. Monitor training logs in `logs/`
+5. Evaluate results: `python main.py --mode evaluate --model-path models/LATEST`
+
+### Debugging Training Issues
+1. Check logs in `logs/` directory for component-specific errors
+2. Verify data quality: `python -c "from src.data import DataManager; dm = DataManager(); data = dm.get_stock_data('AAPL', '1y'); print(data.describe())"`
+3. Test environment: `python -c "from src.environment import TradingEnvironment; env = TradingEnvironment(); env.reset()"`
+4. Run single test: `"D:/ProgramData/anaconda3/envs/tensortrade_modern/python.exe" -m pytest test/training/test_stable_baselines_trainer.py -v`
+
+## Key Architecture Patterns
+
+### Dependency Injection Pattern
+- `Config` class provides centralized configuration
+- All major components accept `Config` instance in constructor
+- Allows easy testing and configuration switching
+
+### Factory Pattern
+- `DataSourceFactory` for data source creation
+- `RewardFactory` for reward function instantiation
+- Enables runtime configuration and extensibility
+
+### Observer Pattern
+- Training callbacks provide progress monitoring
+- Risk manager observes portfolio state changes
+- Alert system observes system metrics
+
+### Singleton Pattern
+- `DataManager` implements singleton for cache management
+- Prevents duplicate data downloads and memory usage
+
+### Strategy Pattern
+- Reward functions implement common interface but different strategies
+- Data sources follow common interface with different implementations
+- Allows easy switching between algorithms and providers

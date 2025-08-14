@@ -3,9 +3,9 @@
 
 提供统一的金融数据源访问接口，支持：
 - 股票数据 (YFinance)  
-- 外汇Tick数据 (TrueFX, Oanda, Dukascopy)
+- 外汇分钟级数据 (FXMinute)
+- 外汇Tick数据 (TrueFX, Oanda)
 - 历史数据文件 (HistData)
-- 专业交易平台 (FXCM)
 
 使用抽象工厂模式，支持运行时数据源切换和多源聚合。
 """
