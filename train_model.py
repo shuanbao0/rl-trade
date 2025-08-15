@@ -1113,7 +1113,7 @@ def main():
         print("\n可用的奖励函数类型:")
         print("=" * 50)
         try:
-            from src.environment.rewards import get_reward_function_info
+            from src.rewards import get_reward_function_info
             reward_info = get_reward_function_info()
             
             for reward_type, info in reward_info.items():
@@ -1265,7 +1265,7 @@ def main():
                 reward_kwargs['drawdown_weight'] = args.drawdown_weight
             
             # 创建奖励函数实例进行验证
-            from src.environment.rewards import create_reward_function
+            from src.rewards import create_reward_function
             reward_instance = create_reward_function(reward_type, **reward_kwargs)
             print(f"SUCCESS: 奖励函数配置成功: {reward_type}")
             

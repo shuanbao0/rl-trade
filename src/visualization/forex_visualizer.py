@@ -31,7 +31,9 @@ class ForexVisualizer(BaseVisualizer):
     def __init__(self, **kwargs):
         """初始化Forex可视化器"""
         super().__init__(**kwargs)
-        self.logger = logging.getLogger('ForexVisualizer')
+        # 使用统一日志系统
+        from ..utils.logger import get_logger
+        self.logger = get_logger('ForexVisualizer')
         
         # Forex专用颜色
         self.forex_colors = {

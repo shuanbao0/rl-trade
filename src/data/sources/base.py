@@ -58,6 +58,354 @@ class DataQuality(Enum):
     UNKNOWN = "unknown"  # 未知质量：无法确定数据质量等级
 
 
+class DataSource(Enum):
+    """数据源枚举"""
+    YFINANCE = "yfinance"     # Yahoo Finance - 免费股票/加密货币数据
+    TRUEFX = "truefx"         # TrueFX - 免费外汇数据，需要注册
+    OANDA = "oanda"           # Oanda - 专业外汇/CFD数据，需要API密钥
+    FXMINUTE = "fxminute"     # FX-1-Minute-Data - 本地外汇历史数据
+    HISTDATA = "histdata"     # HistData - 外汇历史数据文件
+    AUTO = "auto"             # 自动选择最优数据源
+    
+    @classmethod
+    def from_string(cls, value: str) -> 'DataSource':
+        """从字符串创建数据源枚举，支持向后兼容"""
+        if isinstance(value, cls):
+            return value
+        
+        # 标准化字符串
+        value = str(value).lower().strip()
+        
+        # 尝试直接匹配
+        for source in cls:
+            if source.value == value:
+                return source
+        
+        # 容错匹配
+        mapping = {
+            'yahoo': cls.YFINANCE,
+            'yf': cls.YFINANCE,
+            'yahoo_finance': cls.YFINANCE,
+            'truefx': cls.TRUEFX,
+            'true_fx': cls.TRUEFX,
+            'oanda': cls.OANDA,
+            'fxminute': cls.FXMINUTE,
+            'fx_minute': cls.FXMINUTE,
+            'fx-minute': cls.FXMINUTE,
+            'fxminutedata': cls.FXMINUTE,
+            'histdata': cls.HISTDATA,
+            'hist_data': cls.HISTDATA,
+            'historical_data': cls.HISTDATA,
+            'automatic': cls.AUTO,
+            'default': cls.AUTO,
+        }
+        
+        if value in mapping:
+            return mapping[value]
+        
+        raise ValueError(f"Unknown data source: {value}. Available sources: {[s.value for s in cls]}")
+    
+    @property
+    def display_name(self) -> str:
+        """获取友好的显示名称"""
+        display_names = {
+            self.YFINANCE: "Yahoo Finance",
+            self.TRUEFX: "TrueFX",
+            self.OANDA: "Oanda",
+            self.FXMINUTE: "FX-1-Minute-Data",
+            self.HISTDATA: "HistData",
+            self.AUTO: "Auto-Select"
+        }
+        return display_names.get(self, self.value.title())
+    
+    @property
+    def supported_markets(self) -> List[MarketType]:
+        """获取支持的市场类型"""
+        support_mapping = {
+            self.YFINANCE: [MarketType.STOCK, MarketType.CRYPTO, MarketType.ETF, MarketType.INDEX],
+            self.TRUEFX: [MarketType.FOREX],
+            self.OANDA: [MarketType.FOREX, MarketType.COMMODITIES, MarketType.INDEX],
+            self.FXMINUTE: [MarketType.FOREX],
+            self.HISTDATA: [MarketType.FOREX],
+            self.AUTO: list(MarketType)  # AUTO支持所有市场类型
+        }
+        return support_mapping.get(self, [])
+    
+    @property
+    def data_quality(self) -> DataQuality:
+        """获取数据源的典型质量等级"""
+        quality_mapping = {
+            self.YFINANCE: DataQuality.MEDIUM,
+            self.TRUEFX: DataQuality.HIGH,
+            self.OANDA: DataQuality.HIGH,
+            self.FXMINUTE: DataQuality.HIGH,
+            self.HISTDATA: DataQuality.MEDIUM,
+            self.AUTO: DataQuality.UNKNOWN
+        }
+        return quality_mapping.get(self, DataQuality.UNKNOWN)
+
+
+class DataPeriod(Enum):
+    """数据周期枚举 - 定义标准的时间周期"""
+    
+    # 天数周期
+    DAYS_1 = "1d"       # 1天
+    DAYS_7 = "7d"       # 7天（1周）
+    DAYS_30 = "30d"     # 30天（约1个月）
+    DAYS_60 = "60d"     # 60天（约2个月）
+    DAYS_90 = "90d"     # 90天（约3个月）
+    
+    # 周数周期
+    WEEK_1 = "1w"       # 1周
+    WEEK_2 = "2w"       # 2周
+    WEEK_4 = "4w"       # 4周
+    
+    # 月数周期
+    MONTH_1 = "1mo"     # 1个月
+    MONTH_3 = "3mo"     # 3个月
+    MONTH_6 = "6mo"     # 6个月
+    MONTH_12 = "12mo"   # 12个月
+    
+    # 年数周期
+    YEAR_1 = "1y"       # 1年
+    YEAR_2 = "2y"       # 2年
+    YEAR_5 = "5y"       # 5年
+    YEAR_10 = "10y"     # 10年
+    
+    # 特殊周期
+    MAX = "max"         # 最大可用历史数据
+    
+    @classmethod
+    def from_string(cls, value: str) -> 'DataPeriod':
+        """从字符串创建数据周期枚举，支持向后兼容"""
+        if isinstance(value, cls):
+            return value
+        
+        # 标准化字符串
+        value = str(value).lower().strip()
+        
+        # 尝试直接匹配
+        for period in cls:
+            if period.value == value:
+                return period
+        
+        # 容错匹配和别名支持
+        mapping = {
+            # 天数别名
+            '1': cls.DAYS_1,
+            '1day': cls.DAYS_1,
+            '1days': cls.DAYS_1,
+            '7': cls.DAYS_7,
+            '7day': cls.DAYS_7,
+            '7days': cls.DAYS_7,
+            '30': cls.DAYS_30,
+            '30day': cls.DAYS_30,
+            '30days': cls.DAYS_30,
+            '60': cls.DAYS_60,
+            '60day': cls.DAYS_60,
+            '60days': cls.DAYS_60,
+            '90': cls.DAYS_90,
+            '90day': cls.DAYS_90,
+            '90days': cls.DAYS_90,
+            
+            # 周数别名
+            '1week': cls.WEEK_1,
+            '1weeks': cls.WEEK_1,
+            '2week': cls.WEEK_2,
+            '2weeks': cls.WEEK_2,
+            '4week': cls.WEEK_4,
+            '4weeks': cls.WEEK_4,
+            
+            # 月数别名
+            '1m': cls.MONTH_1,    # 注意：这里可能与分钟间隔冲突，需要上下文判断
+            '1month': cls.MONTH_1,
+            '1months': cls.MONTH_1,
+            '3m': cls.MONTH_3,
+            '3month': cls.MONTH_3,
+            '3months': cls.MONTH_3,
+            '6m': cls.MONTH_6,
+            '6month': cls.MONTH_6,
+            '6months': cls.MONTH_6,
+            '12m': cls.MONTH_12,
+            '12month': cls.MONTH_12,
+            '12months': cls.MONTH_12,
+            
+            # 年数别名
+            '1year': cls.YEAR_1,
+            '1years': cls.YEAR_1,
+            '2year': cls.YEAR_2,
+            '2years': cls.YEAR_2,
+            '5year': cls.YEAR_5,
+            '5years': cls.YEAR_5,
+            '10year': cls.YEAR_10,
+            '10years': cls.YEAR_10,
+            
+            # 特殊值别名
+            'maximum': cls.MAX,
+            'all': cls.MAX,
+            'full': cls.MAX,
+            'complete': cls.MAX,
+        }
+        
+        if value in mapping:
+            return mapping[value]
+        
+        # 尝试解析数字+单位格式（如"365d", "24mo", "3y"等）
+        import re
+        pattern = r'^(\d+)(d|day|days|w|week|weeks|mo|month|months|y|year|years)$'
+        match = re.match(pattern, value)
+        
+        if match:
+            number, unit = match.groups()
+            number = int(number)
+            
+            # 根据单位创建对应的周期
+            if unit in ['d', 'day', 'days']:
+                # 对于常见天数，返回预定义的枚举值
+                if number == 1: return cls.DAYS_1
+                elif number == 7: return cls.DAYS_7
+                elif number == 30: return cls.DAYS_30
+                elif number == 60: return cls.DAYS_60
+                elif number == 90: return cls.DAYS_90
+                # 对于其他天数，返回最接近的预定义值
+                else:
+                    if number <= 3: return cls.DAYS_1
+                    elif number <= 14: return cls.DAYS_7
+                    elif number <= 45: return cls.DAYS_30
+                    elif number <= 75: return cls.DAYS_60
+                    else: return cls.DAYS_90
+                    
+            elif unit in ['w', 'week', 'weeks']:
+                if number == 1: return cls.WEEK_1
+                elif number == 2: return cls.WEEK_2
+                elif number >= 4: return cls.WEEK_4
+                else: return cls.WEEK_1
+                
+            elif unit in ['mo', 'month', 'months']:
+                if number == 1: return cls.MONTH_1
+                elif number <= 3: return cls.MONTH_3
+                elif number <= 6: return cls.MONTH_6
+                else: return cls.MONTH_12
+                
+            elif unit in ['y', 'year', 'years']:
+                if number == 1: return cls.YEAR_1
+                elif number == 2: return cls.YEAR_2
+                elif number <= 5: return cls.YEAR_5
+                else: return cls.YEAR_10
+        
+        raise ValueError(f"Unknown data period: {value}. Available periods: {[p.value for p in cls]}")
+    
+    @property
+    def display_name(self) -> str:
+        """获取友好的显示名称"""
+        display_names = {
+            self.DAYS_1: "1 Day",
+            self.DAYS_7: "7 Days (1 Week)", 
+            self.DAYS_30: "30 Days (~1 Month)",
+            self.DAYS_60: "60 Days (~2 Months)",
+            self.DAYS_90: "90 Days (~3 Months)",
+            
+            self.WEEK_1: "1 Week",
+            self.WEEK_2: "2 Weeks", 
+            self.WEEK_4: "4 Weeks (~1 Month)",
+            
+            self.MONTH_1: "1 Month",
+            self.MONTH_3: "3 Months",
+            self.MONTH_6: "6 Months",
+            self.MONTH_12: "12 Months (1 Year)",
+            
+            self.YEAR_1: "1 Year",
+            self.YEAR_2: "2 Years",
+            self.YEAR_5: "5 Years", 
+            self.YEAR_10: "10 Years",
+            
+            self.MAX: "Maximum Available Data"
+        }
+        return display_names.get(self, self.value.title())
+    
+    def to_days(self) -> int:
+        """转换为天数"""
+        if self == self.MAX:
+            return 365 * 20  # 假设最大20年
+        
+        day_mapping = {
+            self.DAYS_1: 1,
+            self.DAYS_7: 7,
+            self.DAYS_30: 30,
+            self.DAYS_60: 60,
+            self.DAYS_90: 90,
+            
+            self.WEEK_1: 7,
+            self.WEEK_2: 14,
+            self.WEEK_4: 28,
+            
+            self.MONTH_1: 30,
+            self.MONTH_3: 90,
+            self.MONTH_6: 180,
+            self.MONTH_12: 365,
+            
+            self.YEAR_1: 365,
+            self.YEAR_2: 730,
+            self.YEAR_5: 1825,
+            self.YEAR_10: 3650,
+        }
+        return day_mapping.get(self, 365)
+    
+    @property 
+    def is_short_term(self) -> bool:
+        """是否为短期周期（<=30天）"""
+        return self.to_days() <= 30
+    
+    @property
+    def is_medium_term(self) -> bool:
+        """是否为中期周期（30天-1年）"""
+        days = self.to_days()
+        return 30 < days <= 365
+    
+    @property
+    def is_long_term(self) -> bool:
+        """是否为长期周期（>1年）"""
+        return self.to_days() > 365
+    
+    def get_recommended_interval(self, data_source: 'DataSource') -> str:
+        """根据周期和数据源推荐合适的时间间隔"""
+        days = self.to_days()
+        
+        if data_source == DataSource.YFINANCE:
+            if days <= 7:
+                return "1m"      # 7天内用1分钟
+            elif days <= 60:
+                return "5m"      # 60天内用5分钟
+            elif days <= 730:
+                return "1h"      # 2年内用1小时
+            else:
+                return "1d"      # 超过2年用日线
+                
+        elif data_source == DataSource.FXMINUTE:
+            return "1m"          # FXMinute只支持1分钟
+            
+        elif data_source in [DataSource.TRUEFX, DataSource.OANDA]:
+            if days <= 7:
+                return "1m"
+            elif days <= 30: 
+                return "5m"
+            elif days <= 180:
+                return "1h"
+            else:
+                return "1d"
+                
+        else:
+            # 默认推荐
+            if days <= 7:
+                return "1m"
+            elif days <= 30:
+                return "5m" 
+            elif days <= 365:
+                return "1h"
+            else:
+                return "1d"
+
+
 @dataclass
 class MarketData:
     """统一的市场数据格式"""
@@ -81,8 +429,29 @@ class MarketData:
     vwap: Optional[float] = None         # 成交量加权平均价
     turnover: Optional[float] = None     # 成交额
     
+    # 市场特定字段
+    market_type: Optional[MarketType] = None     # 市场类型
+    interval: Optional[DataInterval] = None      # 数据间隔
+    
+    # 股票特定字段
+    adj_close: Optional[float] = None    # 复权收盘价
+    dividend: Optional[float] = None     # 分红
+    split_ratio: Optional[float] = None  # 拆股比例
+    
+    # 外汇特定字段
+    pip_value: Optional[float] = None    # 点值
+    pip_spread: Optional[float] = None   # 点差
+    
+    # 加密货币特定字段
+    quote_volume: Optional[float] = None # 计价货币成交量
+    
+    # 期货/期权特定字段
+    open_interest: Optional[int] = None  # 持仓量
+    settlement_price: Optional[float] = None  # 结算价
+    expiry_date: Optional[datetime] = None    # 到期日
+    
     # 元数据
-    source: Optional[str] = None         # 数据源名称
+    source: Optional[DataSource] = None  # 数据源名称
     quality: DataQuality = DataQuality.UNKNOWN  # 数据质量
     metadata: Dict[str, Any] = field(default_factory=dict)  # 附加信息
     
@@ -121,7 +490,24 @@ class MarketData:
             'tick_count': self.tick_count,
             'vwap': self.vwap,
             'turnover': self.turnover,
-            'source': self.source,
+            # 市场特定字段
+            'market_type': self.market_type.value if self.market_type else None,
+            'interval': self.interval.value if self.interval else None,
+            # 股票特定字段
+            'adj_close': self.adj_close,
+            'dividend': self.dividend,
+            'split_ratio': self.split_ratio,
+            # 外汇特定字段
+            'pip_value': self.pip_value,
+            'pip_spread': self.pip_spread,
+            # 加密货币特定字段
+            'quote_volume': self.quote_volume,
+            # 期货/期权特定字段
+            'open_interest': self.open_interest,
+            'settlement_price': self.settlement_price,
+            'expiry_date': self.expiry_date,
+            # 元数据
+            'source': self.source.value if self.source else None,
             'quality': self.quality.value,
             'metadata': self.metadata
         }
@@ -131,6 +517,7 @@ class MarketData:
 class DataSourceCapabilities:
     """数据源能力描述"""
     name: str                                    # 数据源名称
+    source_id: DataSource                       # 数据源标识符
     supported_markets: List[MarketType]         # 支持的市场类型
     supported_intervals: List[DataInterval]     # 支持的时间间隔
     has_realtime: bool                          # 是否支持实时数据
@@ -212,15 +599,9 @@ class AbstractDataSource(ABC):
     
     def _setup_logger(self) -> logging.Logger:
         """设置日志记录器"""
-        logger = logging.getLogger(f"DataSource.{self.name}")
-        if not logger.handlers:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            )
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
-            logger.setLevel(logging.INFO)
+        # 使用统一日志系统
+        from ...utils.logger import get_logger
+        logger = get_logger(f"DataSource.{self.name}")
         return logger
     
     @abstractmethod

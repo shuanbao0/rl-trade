@@ -114,17 +114,42 @@ python -c "import tensortrade; print('TensorTrade installed successfully')"
 # 训练模式 - 训练强化学习模型
 python main.py --mode train --symbol AAPL --period 2y --iterations 100
 
+# 🆕 使用精确日期范围训练
+python main.py --mode train --symbol AAPL --start-date 2022-01-01 --end-date 2023-12-31 --iterations 100
+
 # 验证模式 - Walk Forward验证
 python main.py --mode validate --symbol AAPL --period 2y --num-folds 5
 
 # 回测模式 - 历史数据回测
 python main.py --mode backtest --symbol AAPL --period 1y --model-path models/AAPL_model
 
+# 🆕 使用日期范围回测
+python main.py --mode backtest --symbol AAPL --start-date 2023-01-01 --end-date 2023-12-31 --model-path models/AAPL_model
+
 # 评估模式 - 模型性能评估
 python main.py --mode evaluate --symbol AAPL --period 6m --model-path models/AAPL_model
 
 # 实时交易模式 - 实时数据交易 (需要配置)
 python main.py --mode live --symbol AAPL --model-path models/AAPL_model --duration 8
+```
+
+**🆕 数据下载命令增强:**
+
+```bash
+# 使用DataPeriod枚举值下载
+python download_data.py --symbol AAPL --period 1y --interval 1d
+
+# 使用精确日期范围下载
+python download_data.py --symbol AAPL --start-date 2023-01-01 --end-date 2023-12-31 --interval 1d
+
+# 批量下载多个符号
+python download_data.py --symbols AAPL,GOOGL,MSFT --period 2y --interval 1d
+
+# 获取下载估算信息
+python download_data.py --symbol AAPL --start-date 2020-01-01 --end-date 2023-12-31 --estimate-only
+
+# 外汇数据下载（自动选择数据源）
+python download_data.py --symbol EURUSD --period 1y --data-source truefx --interval 1m
 ```
 
 #### Web API接口
@@ -144,27 +169,62 @@ uvicorn api:app --host 0.0.0.0 --port 8000
 
 ```python
 from main import TensorTradeSystem
+from src.data.sources.base import DataPeriod
 
 # 创建系统实例
 system = TensorTradeSystem()
 system.initialize_components()
 
-# 训练模型
+# 🆕 使用DataPeriod枚举 - 类型安全的时间参数
 result = system.train_mode(
     symbol="AAPL",
-    period="2y",
+    period=DataPeriod.YEAR_2,  # 类型安全的枚举
     iterations=100
 )
 
-# 验证模型
+# 🆕 使用精确日期范围 - 历史数据回测
 validation_result = system.validate_mode(
     symbol="AAPL",
-    period="2y",
+    start_date="2022-01-01",   # 精确开始日期
+    end_date="2023-12-31",     # 精确结束日期
     num_folds=5
 )
 
 print(f"训练完成: {result['status']}")
 print(f"验证完成: {validation_result['status']}")
+```
+
+**🆕 新增时间参数功能示例:**
+
+```python
+from src.data import DataManager
+from src.data.sources.base import DataPeriod, DataSource
+
+# 创建数据管理器
+data_manager = DataManager(data_source_type=DataSource.YFINANCE)
+
+# 1. 使用类型安全的DataPeriod枚举
+data = data_manager.get_stock_data('AAPL', period=DataPeriod.MONTH_6)
+print(f"获取 {DataPeriod.MONTH_6.display_name} 数据: {len(data)} 条记录")
+
+# 2. 使用精确日期范围下载
+precise_data = data_manager.get_stock_data_by_date_range(
+    symbol='AAPL',
+    start_date='2023-01-01',
+    end_date='2023-12-31',
+    interval='1d'
+)
+
+# 3. 获取智能时间建议
+from src.data.smart_time_advisor import get_smart_time_advisor
+
+advisor = get_smart_time_advisor()
+suggestion = advisor.suggest_optimal_time_range(
+    symbol='AAPL',
+    use_case='backtesting'  # 回测场景的最优建议
+)
+print(f"建议时间范围: {suggestion.start_date} - {suggestion.end_date}")
+print(f"建议数据源: {suggestion.data_source.value}")
 ```
 
 ## 📊 系统架构
@@ -193,6 +253,9 @@ graph TD
 #### 1. 数据管理模块 (`src/data/`)
 - **DataManager**: 股票数据获取和缓存
 - 支持多种数据周期（1d, 1h, 5m等）
+- **🆕 DataPeriod枚举**: 类型安全的时间周期参数
+- **🆕 日期范围下载**: 支持精确的开始/结束日期
+- **🆕 智能时间建议**: 基于使用场景的最优时间范围建议
 - 智能缓存系统避免重复下载
 - 数据验证和清洗
 

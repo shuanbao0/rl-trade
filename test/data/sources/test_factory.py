@@ -12,7 +12,7 @@ import yaml
 from src.data.sources.factory import (
     DataSourceRegistry, DataSourceFactory, ConfigLoader
 )
-from src.data.sources.base import AbstractDataSource, DataSourceCapabilities, MarketType, DataInterval
+from src.data.sources.base import AbstractDataSource, DataSourceCapabilities, MarketType, DataInterval, DataSource
 
 
 class MockDataSource1(AbstractDataSource):
@@ -43,6 +43,7 @@ class MockDataSource1(AbstractDataSource):
     def get_capabilities(self):
         return DataSourceCapabilities(
             name="MockSource1",
+            source_id=DataSource.YFINANCE,  # 使用已存在的枚举值进行测试
             supported_markets=[MarketType.STOCK],
             supported_intervals=[DataInterval.MINUTE_1],
             has_realtime=True,
@@ -78,6 +79,7 @@ class MockDataSource2(AbstractDataSource):
     def get_capabilities(self):
         return DataSourceCapabilities(
             name="MockSource2",
+            source_id=DataSource.TRUEFX,  # 使用已存在的枚举值进行测试
             supported_markets=[MarketType.FOREX],
             supported_intervals=[DataInterval.HOUR_1],
             has_realtime=True,

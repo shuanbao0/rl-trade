@@ -14,7 +14,7 @@ import threading
 
 from .base import (
     AbstractDataSource, DataInterval, MarketType, MarketData, 
-    DataSourceCapabilities, DataQuality
+    DataSourceCapabilities, DataQuality, DataSource
 )
 from .converter import DataConverter
 
@@ -142,7 +142,7 @@ class YFinanceDataSource(AbstractDataSource):
             data = DataConverter.clean_data(data)
             
             # 添加数据源信息
-            data['source'] = 'yfinance'
+            data['source'] = DataSource.YFINANCE.value  # 兼容现有代码
             data['symbol'] = symbol_normalized
             
             # 更新统计
@@ -410,6 +410,7 @@ class YFinanceDataSource(AbstractDataSource):
         """获取数据源能力"""
         return DataSourceCapabilities(
             name="YFinance",
+            source_id=DataSource.YFINANCE,
             supported_markets=[
                 MarketType.STOCK,
                 MarketType.FOREX,

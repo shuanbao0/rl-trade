@@ -19,7 +19,7 @@ import pandas as pd
 
 from .base import (
     AbstractDataSource, DataInterval, MarketType, MarketData, 
-    DataSourceCapabilities, DataQuality
+    DataSourceCapabilities, DataQuality, DataSource
 )
 from .converter import DataConverter
 
@@ -402,6 +402,7 @@ class TrueFXDataSource(AbstractDataSource):
         """获取数据源能力"""
         return DataSourceCapabilities(
             name="TrueFX",
+            source_id=DataSource.TRUEFX,
             supported_markets=[MarketType.FOREX],
             supported_intervals=[DataInterval.TICK],
             has_realtime=True,

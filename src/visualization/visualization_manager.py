@@ -49,7 +49,9 @@ class VisualizationManager:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         # 设置日志
-        self.logger = logging.getLogger('VisualizationManager')
+        # 使用统一日志系统
+        from ..utils.logger import get_logger
+        self.logger = get_logger('VisualizationManager')
         
         # 初始化各个可视化组件
         viz_config = {

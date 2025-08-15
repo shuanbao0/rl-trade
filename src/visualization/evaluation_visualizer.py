@@ -31,7 +31,9 @@ class EvaluationVisualizer(BaseVisualizer):
     def __init__(self, **kwargs):
         """初始化评估可视化器"""
         super().__init__(**kwargs)
-        self.logger = logging.getLogger('EvaluationVisualizer')
+        # 使用统一日志系统
+        from ..utils.logger import get_logger
+        self.logger = get_logger('EvaluationVisualizer')
     
     def plot_episode_performance(self, 
                                 episode_data: List[Dict[str, Any]],

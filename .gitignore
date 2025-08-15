@@ -422,3 +422,4 @@ datasets/
 logs/
 evalustion_results/
 models/
+local_data/

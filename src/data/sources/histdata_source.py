@@ -20,7 +20,7 @@ from pathlib import Path
 
 from .base import (
     AbstractDataSource, DataInterval, MarketType, MarketData, 
-    DataSourceCapabilities, DataQuality
+    DataSourceCapabilities, DataQuality, DataSource
 )
 from .converter import DataConverter
 
@@ -459,6 +459,7 @@ class HistDataDataSource(AbstractDataSource):
         """获取数据源能力"""
         return DataSourceCapabilities(
             name="HistData",
+            source_id=DataSource.HISTDATA,
             supported_markets=[MarketType.FOREX, MarketType.COMMODITIES],
             supported_intervals=[DataInterval.TICK, DataInterval.MINUTE_1],
             has_realtime=False,  # 主要是历史数据

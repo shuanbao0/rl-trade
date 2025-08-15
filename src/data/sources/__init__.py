@@ -15,7 +15,9 @@ from .base import (
     DataInterval,
     MarketType, 
     MarketData,
-    DataSourceCapabilities
+    DataSourceCapabilities,
+    DataQuality,
+    DataSource
 )
 
 from .factory import (
@@ -70,6 +72,8 @@ __all__ = [
     'MarketType',
     'MarketData',
     'DataSourceCapabilities',
+    'DataQuality',
+    'DataSource',
     
     # 工厂模式
     'DataSourceFactory',

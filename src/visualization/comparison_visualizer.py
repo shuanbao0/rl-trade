@@ -32,7 +32,9 @@ class ComparisonVisualizer(BaseVisualizer):
     def __init__(self, **kwargs):
         """初始化对比可视化器"""
         super().__init__(**kwargs)
-        self.logger = logging.getLogger('ComparisonVisualizer')
+        # 使用统一日志系统
+        from ..utils.logger import get_logger
+        self.logger = get_logger('ComparisonVisualizer')
         
         # 对比专用颜色方案
         self.comparison_colors = [

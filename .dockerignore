@@ -84,8 +84,8 @@ docs/
 .env
 .env.local
 .env.production
-config/*.json
-!config/default.json
+src/data/config/*.json
+!src/data/config/default.json
 
 # 数据文件
 *.csv

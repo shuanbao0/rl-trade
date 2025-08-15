@@ -56,7 +56,9 @@ class BaseVisualizer:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         # 设置日志
-        self.logger = logging.getLogger(self.__class__.__name__)
+        # 使用统一日志系统
+        from ..utils.logger import get_logger
+        self.logger = get_logger(self.__class__.__name__)
         
         # 设置matplotlib样式
         try:

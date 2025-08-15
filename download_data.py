@@ -22,6 +22,12 @@
   # 使用YFinance数据源下载股票数据
   python download_data.py --data-source yfinance --symbol AAPL --period 1y
 
+  # 使用日期范围下载数据 (新增功能)
+  python download_data.py --symbol AAPL --start-date 2023-01-01 --end-date 2023-12-31
+  
+  # 结合数据源和日期范围
+  python download_data.py --data-source yfinance --symbol AAPL --start-date 2023-06-01 --end-date 2023-08-31 --interval 1h
+
   # 使用TrueFX数据源下载外汇数据
   python download_data.py --data-source truefx --symbol EURUSD --period 1mo
 
@@ -42,6 +48,23 @@
 
   # 禁用代理
   python download_data.py --no-proxy
+
+  # 启用分批次下载（适用于大数据量）
+  python download_data.py --symbol EURUSD --period max --interval 1m --enable-batch-download
+
+  # 自定义分批次配置
+  python download_data.py --symbol AAPL --period 5y --interval 1h --enable-batch-download --batch-threshold-days 180 --batch-size-days 30
+
+  # 禁用断点续传
+  python download_data.py --enable-batch-download --no-resume
+
+分批次下载说明:
+  - 适用于大数据量下载，避免内存溢出和网络超时
+  - 自动判断何时启用分批次模式：时间跨度>365天 或 1分钟数据>30天 或 估算记录数>100万条
+  - 支持断点续传，下载中断后可以继续
+  - 智能批次大小：根据数据间隔自动调整批次大小
+  - 内存管理：自动垃圾回收，监控内存使用
+  - 进度保存：定期保存下载进度，支持恢复
 
 数据源说明:
   - fxminute: FX-1-Minute-Data，本地缓存外汇数据 (默认，2000-2024年高质量数据)
@@ -73,29 +96,20 @@ import pickle
 import time
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Union
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
 
+from src.data.core.data_manager import DataManager
+from src.data.sources.base import DataSource, DataPeriod, DataInterval
+from src.features.feature_engineer import FeatureEngineer
+from src.utils.config import Config
+from src.utils.logger import setup_logger, get_default_log_file
+
 # 添加项目根目录到Python路径
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
-
-# 抑制警告
-warnings.filterwarnings('ignore', category=FutureWarning)
-warnings.filterwarnings('ignore', category=UserWarning)
-
-try:
-    from src.data.data_manager import DataManager
-    from src.features.feature_engineer import FeatureEngineer
-    from src.utils.config import Config
-    from src.utils.logger import setup_logger, get_default_log_file
-except ImportError as e:
-    print(f"导入模块失败: {e}")
-    print("请确保已安装所有依赖包: pip install -r requirements.txt")
-    sys.exit(1)
-
 
 class DataDownloader:
     """
@@ -104,13 +118,14 @@ class DataDownloader:
     负责批量下载股票数据、特征工程和数据集划分
     """
     
-    def __init__(self, config_path: Optional[str] = None, output_dir: str = "datasets"):
+    def __init__(self, config_path: Optional[str] = None, output_dir: str = "datasets", data_source_enum: Optional[DataSource] = None):
         """
         初始化数据下载器
         
         Args:
             config_path: 配置文件路径
             output_dir: 输出目录
+            data_source_enum: 数据源枚举类型
         """
         # 设置代理（如果需要）
         self._setup_proxy()
@@ -130,13 +145,17 @@ class DataDownloader:
         )
         
         # 初始化核心组件，传递代理配置和数据源类型
-        data_source_type = os.getenv('DATA_SOURCE_TYPE', 'fxminute')
+        if data_source_enum is None:
+            # 后备方案：从环境变量获取并转换为枚举
+            data_source_type = os.getenv('DATA_SOURCE_TYPE', 'fxminute')
+            data_source_enum = DataSource.from_string(data_source_type)
+        
         data_source_config = self._load_data_source_config()
         
         # 为FXMinute数据源提供默认配置
-        if data_source_type == 'fxminute' and not data_source_config:
+        if data_source_enum == DataSource.FXMINUTE and not data_source_config:
             data_source_config = {
-                'data_directory': str(PROJECT_ROOT / 'data_cache' / 'FX-1-Minute-Data'),
+                'data_directory': str(PROJECT_ROOT / 'local_data' / 'FX-1-Minute-Data'),
                 'auto_extract': True,
                 'cache_extracted': True,
                 'extracted_cache_dir': str(PROJECT_ROOT / 'fx_minute_cache')
@@ -144,10 +163,12 @@ class DataDownloader:
         
         self.data_manager = DataManager(
             config=self.config,
-            data_source_type=data_source_type,
+            data_source_type=data_source_enum,
             data_source_config=data_source_config
         )
         self.feature_engineer = FeatureEngineer(self.config)
+        
+        # 分批次下载功能现在集成在 DataManager 中
         
         # 设置代理配置到 DataManager
         self._configure_data_manager_proxy()
@@ -214,11 +235,57 @@ class DataDownloader:
         
         return {}
     
+    def get_supported_periods(self) -> List[DataPeriod]:
+        """
+        获取支持的数据周期枚举列表
+        
+        Returns:
+            List[DataPeriod]: 支持的数据周期列表
+        """
+        return self.data_manager.get_supported_periods()
+    
+    def get_period_info(self, period: Union[str, DataPeriod]) -> Dict[str, Any]:
+        """
+        获取数据周期的详细信息
+        
+        Args:
+            period: 数据周期（字符串或枚举）
+            
+        Returns:
+            Dict[str, Any]: 周期详细信息
+        """
+        return self.data_manager.get_period_info(period)
+    
+    def convert_period_to_date_range(
+        self, 
+        period: Union[str, DataPeriod], 
+        end_date: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        将数据周期转换为日期范围
+        
+        Args:
+            period: 数据周期（字符串或枚举）
+            end_date: 结束日期，默认为当前日期
+            
+        Returns:
+            Dict[str, Any]: 包含日期范围信息的字典
+        """
+        date_range = self.data_manager.convert_period_to_date_range(period, end_date)
+        return {
+            'start_date': date_range.start_date.strftime('%Y-%m-%d'),
+            'end_date': date_range.end_date.strftime('%Y-%m-%d'),
+            'duration_days': date_range.duration_days,
+            'period_display': period.display_name if isinstance(period, DataPeriod) else str(period)
+        }
+    
     def download_single_stock(
         self,
         symbol: str,
-        period: str = "2y",
-        interval: str = "1d",
+        period: Union[str, DataPeriod] = "2y",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        interval: Union[str, DataInterval] = "1d",
         train_ratio: float = 0.7,
         val_ratio: float = 0.2,
         test_ratio: float = 0.1
@@ -228,8 +295,10 @@ class DataDownloader:
         
         Args:
             symbol: 股票代码
-            period: 数据周期
-            interval: 数据间隔
+            period: 数据周期 (支持字符串或DataPeriod枚举，如果未指定start_date和end_date)
+            start_date: 开始日期 (YYYY-MM-DD格式)
+            end_date: 结束日期 (YYYY-MM-DD格式)
+            interval: 数据间隔 (支持字符串或DataInterval枚举)
             train_ratio: 训练集比例
             val_ratio: 验证集比例  
             test_ratio: 测试集比例
@@ -240,14 +309,31 @@ class DataDownloader:
         data_source = os.getenv('DATA_SOURCE_TYPE', 'yfinance')
         start_time = time.time()
         
+        # 处理DataPeriod枚举
+        period_display = period.display_name if isinstance(period, DataPeriod) else str(period)
+        period_value = period if isinstance(period, (str, DataPeriod)) else str(period)
+        
+        # 处理DataInterval枚举  
+        interval_display = interval.value if isinstance(interval, DataInterval) else str(interval)
+        interval_value = interval.value if isinstance(interval, DataInterval) else str(interval)
+        
         # 打印开始信息
         print(f"\n{'='*60}")
-        print(f"📊 开始处理: {symbol}")
-        print(f"数据源: {data_source} | 周期: {period} | 间隔: {interval}")
+        print(f"开始处理: {symbol}")
+        
+        # 显示时间范围信息
+        if start_date and end_date:
+            print(f"数据源: {data_source} | 时间范围: {start_date} ~ {end_date} | 间隔: {interval_display}")
+            self.logger.info(f"开始下载数据: {symbol} (数据源: {data_source}), 时间范围: {start_date} ~ {end_date}, 间隔: {interval_display}")
+        else:
+            print(f"数据源: {data_source} | 周期: {period_display} | 间隔: {interval_display}")
+            if isinstance(period, DataPeriod):
+                self.logger.info(f"开始下载数据: {symbol} (数据源: {data_source}), 周期: {period_display} ({period.to_days()}天), 间隔: {interval_display}")
+            else:
+                self.logger.info(f"开始下载数据: {symbol} (数据源: {data_source}), 周期: {period_display}, 间隔: {interval_display}")
+        
         print(f"数据集划分: 训练({train_ratio:.0%}) 验证({val_ratio:.0%}) 测试({test_ratio:.0%})")
         print(f"{'='*60}")
-        
-        self.logger.info(f"开始下载数据: {symbol} (数据源: {data_source}), 周期: {period}, 间隔: {interval}")
         
         try:
             # 验证比例
@@ -258,18 +344,35 @@ class DataDownloader:
             with tqdm(total=5, desc="数据处理进度", ncols=80, colour='green') as pbar:
                 
                 # 1. 获取原始数据
-                pbar.set_description("📥 获取原始数据")
+                pbar.set_description("获取原始数据")
                 self.logger.info(f"从 {data_source} 获取 {symbol} 数据...")
                 step_start = time.time()
-                raw_data = self.data_manager.get_stock_data(symbol, period=period, interval=interval)
+                
+                # 使用DataManager的智能数据获取（内部会自动判断是否使用分批次下载）
+                if start_date and end_date:
+                    # 使用日期范围下载
+                    raw_data = self.data_manager.get_stock_data_by_date_range(
+                        symbol=symbol,
+                        start_date=start_date,
+                        end_date=end_date,
+                        interval=interval_value
+                    )
+                else:
+                    # 使用传统的周期下载（支持DataPeriod枚举）
+                    raw_data = self.data_manager.get_stock_data(
+                        symbol=symbol,
+                        period=period_value,  # 使用period_value支持DataPeriod枚举
+                        interval=interval_value
+                    )
+                
                 step_time = time.time() - step_start
                 
-                print(f"✅ 数据获取完成: {len(raw_data):,} 条记录 ({step_time:.2f}秒)")
+                print(f"数据获取完成: {len(raw_data):,} 条记录 ({step_time:.2f}秒)")
                 self.logger.info(f"数据获取完成: {len(raw_data)} 条记录 (耗时: {step_time:.2f}秒)")
                 pbar.update(1)
                 
                 # 2. 特征工程
-                pbar.set_description("🔧 执行特征工程")
+                pbar.set_description("执行特征工程")
                 self.logger.info("执行特征工程...")
                 step_start = time.time()
                 features_data = self.feature_engineer.prepare_features(raw_data)
@@ -317,7 +420,9 @@ class DataDownloader:
                 metadata = {
                     'symbol': symbol,
                     'period': period,
-                    'interval': interval,
+                    'start_date': start_date,  # 新增
+                    'end_date': end_date,      # 新增
+                    'interval': interval_display,
                     'download_time': timestamp,
                     'raw_data_shape': raw_data.shape,
                     'features_data_shape': features_data.shape,
@@ -373,8 +478,8 @@ class DataDownloader:
     def download_multiple_stocks(
         self,
         symbols: List[str],
-        period: str = "2y",
-        interval: str = "1d",
+        period: Union[str, DataPeriod] = "2y",
+        interval: Union[str, DataInterval] = "1d",
         train_ratio: float = 0.7,
         val_ratio: float = 0.2,
         test_ratio: float = 0.1
@@ -384,8 +489,8 @@ class DataDownloader:
         
         Args:
             symbols: 股票代码列表
-            period: 数据周期
-            interval: 数据间隔
+            period: 数据周期 (支持字符串或DataPeriod枚举)
+            interval: 数据间隔 (支持字符串或DataInterval枚举)
             train_ratio: 训练集比例
             val_ratio: 验证集比例
             test_ratio: 测试集比例
@@ -678,6 +783,134 @@ class DataDownloader:
             'outlier_features': len(outliers),
             'quality_score': round((1 - (nan_count + inf_count) / total_cells) * 100, 2)
         }
+    
+    def _should_use_batch_download(self, period: str, interval: str, threshold_days: int) -> bool:
+        """
+        判断是否应该使用分批次下载
+        
+        Args:
+            period: 数据周期
+            interval: 数据间隔
+            threshold_days: 阈值天数
+            
+        Returns:
+            bool: 是否需要分批次下载
+        """
+        # 解析period到天数
+        period_days = self._parse_period_to_days(period)
+        
+        # 估算数据量
+        interval_multipliers = {
+            '1m': 1440,    # 每天1440条记录
+            '5m': 288,     # 每天288条记录
+            '15m': 96,     # 每天96条记录
+            '30m': 48,     # 每天48条记录
+            '1h': 24,      # 每天24条记录
+            '1d': 1,       # 每天1条记录
+            '1wk': 0.14,   # 每周1条记录
+            '1mo': 0.03,   # 每月1条记录
+        }
+        
+        multiplier = interval_multipliers.get(interval, 1)
+        estimated_records = period_days * multiplier
+        
+        # 判断条件：
+        # 1. 时间跨度超过阈值
+        # 2. 高频数据（1m, 5m）且时间跨度较长
+        # 3. 估算记录数超过100万条
+        
+        if period_days > threshold_days:
+            return True
+        
+        if interval in ['1m', '5m'] and period_days > 30:
+            return True
+            
+        if estimated_records > 1000000:  # 100万条记录
+            return True
+            
+        return False
+    
+    def _parse_period_to_days(self, period: str) -> int:
+        """
+        解析period字符串到天数
+        
+        Args:
+            period: 周期字符串 (如 '1y', '6mo', '30d', 'max')
+            
+        Returns:
+            int: 天数
+        """
+        if period == 'max':
+            return 365 * 20  # 假设最大20年
+        
+        period = period.lower()
+        
+        if period.endswith('d'):
+            return int(period[:-1])
+        elif period.endswith('w'):
+            return int(period[:-1]) * 7
+        elif period.endswith('mo'):
+            return int(period[:-2]) * 30
+        elif period.endswith('y'):
+            return int(period[:-1]) * 365
+        else:
+            # 默认按天处理
+            try:
+                return int(period)
+            except:
+                return 365  # 默认1年
+    
+    def _download_with_batches(self, symbol: str, period: str, interval: str) -> pd.DataFrame:
+        """
+        使用分批次下载模式
+        
+        Args:
+            symbol: 交易符号
+            period: 数据周期
+            interval: 数据间隔
+            
+        Returns:
+            pd.DataFrame: 下载的数据
+        """
+        # 计算时间范围
+        end_date = datetime.now()
+        period_days = self._parse_period_to_days(period)
+        start_date = end_date - timedelta(days=period_days)
+        
+        start_str = start_date.strftime('%Y-%m-%d')
+        end_str = end_date.strftime('%Y-%m-%d')
+        
+        self.logger.info(f"使用分批次下载: {symbol}, {start_str} 到 {end_str}")
+        
+        # 估算下载时间（使用 DataManager 的内置方法）
+        estimation = self.data_manager.get_batch_download_estimation(
+            symbol, period, interval
+        )
+        
+        print(f"📊 下载估算:")
+        print(f"   时间范围: {start_str} → {end_str} ({estimation['total_days']} 天)")
+        print(f"   批次配置: {estimation['batch_days']} 天/批次, 共 {estimation['total_batches']} 批次")
+        print(f"   预计耗时: {estimation['total_estimated_time_minutes']:.1f} 分钟")
+        
+        # 询问用户确认
+        if estimation['total_estimated_time_minutes'] > 10:
+            try:
+                confirm = input(f"\n⚠️  预计下载时间较长 ({estimation['total_estimated_time_minutes']:.1f} 分钟)，是否继续？ [y/N]: ")
+                if confirm.lower() not in ['y', 'yes']:
+                    print("❌ 用户取消下载")
+                    return pd.DataFrame()
+            except KeyboardInterrupt:
+                print("\n❌ 用户取消下载")
+                return pd.DataFrame()
+        
+        # 执行分批次下载（使用 DataManager 的内置方法）
+        return self.data_manager._download_in_batches(
+            symbol=symbol,
+            start_date=start_str,
+            end_date=end_str,
+            interval=interval,
+            resume=True
+        )
 
 
 def parse_arguments():
@@ -698,6 +931,13 @@ def parse_arguments():
     
     parser.add_argument('--period', '-p',
                        help='数据周期 (例如: 1y, 2y, 6m, 3m)')
+    
+    # 日期范围参数 (新增)
+    parser.add_argument('--start-date',
+                       help='开始日期 (格式: YYYY-MM-DD, 例如: 2023-01-01)')
+    
+    parser.add_argument('--end-date',
+                       help='结束日期 (格式: YYYY-MM-DD, 例如: 2023-12-31)')
     
     parser.add_argument('--interval', '-i',
                        help='数据间隔 (fxminute仅支持1m, yfinance: 1m仅7天/1h支持2年/1d支持历史)')
@@ -741,12 +981,35 @@ def parse_arguments():
     
     # 数据源参数
     parser.add_argument('--data-source',
-                       choices=['fxminute', 'yfinance', 'truefx', 'oanda', 'histdata'],
-                       default='fxminute',
+                       choices=[ds.value for ds in DataSource if ds != DataSource.AUTO],
+                       default=DataSource.FXMINUTE.value,
                        help='数据源类型 (默认: fxminute)')
     
     parser.add_argument('--data-source-config',
                        help='数据源配置文件路径 (JSON格式)')
+    
+    # 分批次下载参数
+    parser.add_argument('--enable-batch-download',
+                       action='store_true',
+                       help='启用分批次下载（适用于大数据量）')
+    
+    parser.add_argument('--batch-threshold-days',
+                       type=int,
+                       default=365,
+                       help='分批次下载阈值（天数，默认365天）')
+    
+    parser.add_argument('--batch-size-days',
+                       type=int,
+                       help='分批次大小（天数，默认自动计算）')
+    
+    parser.add_argument('--resume-download',
+                       action='store_true',
+                       default=True,
+                       help='启用断点续传（默认启用）')
+    
+    parser.add_argument('--no-resume',
+                       action='store_true',
+                       help='禁用断点续传')
     
     # 其他参数
     parser.add_argument('--verbose', '-v',
@@ -768,8 +1031,8 @@ def main():
     # =============================================
     DEFAULT_SYMBOL = "EURUSD"         # 默认外汇代码 (欧元/美元，FX-1-Minute-Data支持)
     DEFAULT_SYMBOLS = None            # 默认多外汇（None表示使用单外汇）
-    DEFAULT_PERIOD = "max"            # 默认数据周期 (所有可用数据，2000-2024年)
-    DEFAULT_INTERVAL = "1m"           # 默认数据间隔 (1分钟粒度，FXMinute仅支持1分钟)
+    DEFAULT_PERIOD = DataPeriod.MAX    # 默认数据周期 (所有可用数据，2000-2024年)
+    DEFAULT_INTERVAL = DataInterval.MINUTE_1  # 默认数据间隔 (1分钟粒度，FXMinute仅支持1分钟)
     DEFAULT_TRAIN_RATIO = 0.7         # 默认训练集比例
     DEFAULT_VAL_RATIO = 0.2           # 默认验证集比例  
     DEFAULT_TEST_RATIO = 0.1          # 默认测试集比例
@@ -783,7 +1046,7 @@ def main():
     DEFAULT_PROXY_PORT = "7891"       # 默认代理端口（本地socket代理）
     
     # 数据源配置 - 修改这里来配置默认数据源
-    DEFAULT_DATA_SOURCE = "fxminute"   # 默认数据源类型 (FX-1-Minute-Data本地缓存数据)
+    DEFAULT_DATA_SOURCE = DataSource.FXMINUTE   # 默认数据源枚举 (FX-1-Minute-Data本地缓存数据)
     DEFAULT_DATA_SOURCE_CONFIG = None  # 默认数据源配置文件
     
     # 解析命令行参数
@@ -792,15 +1055,73 @@ def main():
     # 使用默认值覆盖未指定的参数
     symbol = args.symbol or DEFAULT_SYMBOL
     symbols = args.symbols or DEFAULT_SYMBOLS
-    period = args.period or DEFAULT_PERIOD
-    interval = args.interval or DEFAULT_INTERVAL
+    start_date = args.start_date  # 新增：开始日期
+    end_date = args.end_date      # 新增：结束日期
+    
+    # 处理period参数（支持命令行字符串和默认枚举）
+    if args.period:
+        # 用户提供了命令行参数，转换字符串为DataPeriod枚举
+        try:
+            period = DataPeriod.from_string(args.period)
+            print(f"使用DataPeriod枚举 (从命令行): {period.display_name} ({period.to_days()}天)")
+        except ValueError:
+            period = args.period  # 保持字符串格式作为后备
+            print(f"⚠️  使用字符串周期 (从命令行): {args.period} (未找到对应的DataPeriod枚举)")
+    else:
+        # 使用默认枚举值
+        period = DEFAULT_PERIOD
+        print(f"使用默认DataPeriod枚举: {period.display_name} ({period.to_days()}天)")
+    
+    # 处理interval参数（支持命令行字符串和默认枚举）
+    if args.interval:
+        # 用户提供了命令行参数，转换字符串为DataInterval枚举
+        interval_str = args.interval
+        interval_mapping = {
+            '1m': DataInterval.MINUTE_1,
+            '5m': DataInterval.MINUTE_5, 
+            '15m': DataInterval.MINUTE_15,
+            '30m': DataInterval.MINUTE_30,
+            '1h': DataInterval.HOUR_1,
+            '4h': DataInterval.HOUR_4,
+            '1d': DataInterval.DAY_1,
+            '1w': DataInterval.WEEK_1,
+            '1M': DataInterval.MONTH_1,
+            '1Y': DataInterval.YEAR_1
+        }
+        
+        if interval_str in interval_mapping:
+            interval = interval_mapping[interval_str]
+            print(f"使用DataInterval枚举 (从命令行): {interval.value}")
+        else:
+            # 尝试通过value直接匹配
+            interval = None
+            for enum_item in DataInterval:
+                if enum_item.value == interval_str:
+                    interval = enum_item
+                    print(f"使用DataInterval枚举 (从命令行,通过值匹配): {interval.value}")
+                    break
+            
+            if interval is None:
+                interval = interval_str  # 保持字符串格式作为后备
+                print(f"⚠️  使用字符串间隔 (从命令行): {interval_str} (未找到对应的DataInterval枚举)")
+    else:
+        # 使用默认枚举值
+        interval = DEFAULT_INTERVAL
+        print(f"使用默认DataInterval枚举: {interval.value}")
+    
     train_ratio = args.train_ratio or DEFAULT_TRAIN_RATIO
     val_ratio = args.val_ratio or DEFAULT_VAL_RATIO
     test_ratio = args.test_ratio or DEFAULT_TEST_RATIO
     output_dir = args.output_dir or DEFAULT_OUTPUT_DIR
     config_path = args.config or DEFAULT_CONFIG
     verbose = args.verbose or DEFAULT_VERBOSE
-    data_source = args.data_source or DEFAULT_DATA_SOURCE
+    
+    # 处理数据源参数：转换字符串参数为枚举
+    if args.data_source:
+        data_source_enum = DataSource.from_string(args.data_source)
+    else:
+        data_source_enum = DEFAULT_DATA_SOURCE
+    
     data_source_config_file = args.data_source_config or DEFAULT_DATA_SOURCE_CONFIG
     
     # 处理代理设置
@@ -815,9 +1136,16 @@ def main():
     os.environ['USE_PROXY'] = str(use_proxy).lower()
     os.environ['PROXY_HOST'] = args.proxy_host or DEFAULT_PROXY_HOST
     os.environ['PROXY_PORT'] = args.proxy_port or DEFAULT_PROXY_PORT
-    os.environ['DATA_SOURCE_TYPE'] = data_source
+    os.environ['DATA_SOURCE_TYPE'] = data_source_enum.value  # 环境变量仍需要字符串值
     if data_source_config_file:
         os.environ['DATA_SOURCE_CONFIG'] = data_source_config_file
+    
+    # 分批次下载配置
+    os.environ['USE_BATCH_DOWNLOAD'] = str(args.enable_batch_download).lower()
+    os.environ['BATCH_THRESHOLD_DAYS'] = str(args.batch_threshold_days)
+    if args.batch_size_days:
+        os.environ['BATCH_SIZE_DAYS'] = str(args.batch_size_days)
+    os.environ['RESUME_DOWNLOAD'] = str(not args.no_resume).lower()
     
     # 显示配置状态
     if use_proxy:
@@ -826,15 +1154,27 @@ def main():
     else:
         print("代理配置: 已禁用")
     
-    print(f"数据源: {data_source}")
+    print(f"数据源: {data_source_enum.display_name} ({data_source_enum.value})")
     if data_source_config_file:
         print(f"配置文件: {data_source_config_file}")
+    
+    # 显示分批次下载配置
+    if args.enable_batch_download:
+        print(f"分批次下载: 启用 (阈值: {args.batch_threshold_days}天)")
+        if args.batch_size_days:
+            print(f"批次大小: {args.batch_size_days}天")
+        else:
+            print(f"批次大小: 自动计算")
+        print(f"断点续传: {'启用' if not args.no_resume else '禁用'}")
+    else:
+        print(f"分批次下载: 禁用")
     
     try:
         # 创建数据下载器
         downloader = DataDownloader(
             config_path=config_path,
-            output_dir=output_dir
+            output_dir=output_dir,
+            data_source_enum=data_source_enum
         )
         
         # 执行下载
@@ -870,6 +1210,8 @@ def main():
             result = downloader.download_single_stock(
                 symbol=symbol,
                 period=period,
+                start_date=start_date,
+                end_date=end_date,
                 interval=interval,
                 train_ratio=train_ratio,
                 val_ratio=val_ratio,

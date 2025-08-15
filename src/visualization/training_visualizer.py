@@ -32,7 +32,9 @@ class TrainingVisualizer(BaseVisualizer):
     def __init__(self, **kwargs):
         """初始化训练可视化器"""
         super().__init__(**kwargs)
-        self.logger = logging.getLogger('TrainingVisualizer')
+        # 使用统一日志系统
+        from ..utils.logger import get_logger
+        self.logger = get_logger('TrainingVisualizer')
     
     def plot_reward_curves(self, 
                           episode_rewards: List[float],

@@ -72,6 +72,19 @@ def setup_logger(
     return logger
 
 
+def get_logger(name: str) -> logging.Logger:
+    """
+    获取简单的日志记录器
+    
+    Args:
+        name: 日志记录器名称
+        
+    Returns:
+        日志记录器
+    """
+    return setup_logger(name, level="INFO", console_output=True)
+
+
 def get_default_log_file(module_name: str) -> str:
     """
     获取默认日志文件路径

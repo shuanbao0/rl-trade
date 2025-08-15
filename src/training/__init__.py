@@ -65,8 +65,9 @@ def get_training_info():
 
 
 # 模块初始化日志
-import logging
-logger = logging.getLogger(__name__)
+# 使用统一日志系统
+from ..utils.logger import get_logger
+logger = get_logger(__name__)
 logger.info(f"训练模块加载完成 - 版本: {__version__}")
 logger.info("支持的算法: PPO, SAC, DQN")
 logger.info("集成组件: Stable-Baselines3 + Optuna")

@@ -1,0 +1,133 @@
+# 数据源路由配置
+# 定义每种市场类型的默认数据源和fallback策略
+
+routing_strategy:
+  # 股票市场
+  stock:
+    primary: yfinance          # 主数据源
+    fallback: []               # 备选数据源（按优先级排序）
+    description: "股票市场数据路由"
+    
+  # 外汇市场  
+  forex:
+    primary: truefx
+    fallback: 
+      - oanda
+      - fxminute
+    description: "外汇市场数据路由"
+    
+  # 加密货币市场
+  crypto:
+    primary: yfinance
+    fallback: []
+    description: "加密货币市场数据路由"
+    
+  # 商品市场
+  commodities:
+    primary: oanda
+    fallback:
+      - yfinance
+    description: "商品市场数据路由"
+    
+  # 指数市场
+  index:
+    primary: yfinance
+    fallback: []
+    description: "指数市场数据路由"
+    
+  # ETF市场
+  etf:
+    primary: yfinance
+    fallback: []
+    description: "ETF市场数据路由"
+    
+  # 期货市场
+  futures:
+    primary: oanda
+    fallback: []
+    description: "期货市场数据路由"
+    
+  # 期权市场
+  options:
+    primary: oanda
+    fallback: []
+    description: "期权市场数据路由"
+    
+  # 债券市场
+  bonds:
+    primary: yfinance
+    fallback: []
+    description: "债券市场数据路由"
+
+# 全局路由设置
+global_settings:
+  # 默认市场类型（当无法检测时使用）
+  default_market_type: stock
+  
+  # 是否启用源兼容性检查
+  enable_source_compatibility_check: true
+  
+  # 是否启用智能降级（主源失败时自动尝试备选源）
+  enable_smart_fallback: true
+  
+  # 最大重试次数（针对单个数据源）
+  max_retries_per_source: 3
+  
+  # 重试延迟（秒）
+  retry_delay_seconds: 1.0
+  
+  # 源健康检查间隔（分钟）
+  health_check_interval_minutes: 30
+
+# 数据源优先级配置（全局默认）
+source_priorities:
+  - yfinance      # 免费，稳定，支持多种市场
+  - truefx        # 外汇专业，免费
+  - oanda         # 外汇/CFD专业，需要API
+  - fxminute      # 本地外汇历史数据
+  - histdata      # 外汇历史数据文件
+
+# 特殊符号路由规则（覆盖基于市场类型的默认规则）
+symbol_overrides:
+  # 特定符号使用特定数据源
+  EURUSD:
+    primary: truefx
+    fallback: [oanda, fxminute]
+    
+  GBPUSD:
+    primary: truefx  
+    fallback: [oanda, fxminute]
+    
+  XAUUSD:  # 黄金
+    primary: oanda
+    fallback: [yfinance]
+    
+  XAGUSD:  # 白银
+    primary: oanda
+    fallback: [yfinance]
+
+# 时间间隔特定规则
+interval_preferences:
+  # 高频数据（1分钟以下）优先使用专业数据源
+  high_frequency:
+    intervals: ["1s", "5s", "15s", "30s", "1m"]
+    preferred_sources: [truefx, oanda]
+    
+  # 日线以上数据可以使用免费数据源
+  daily_and_above:
+    intervals: ["1d", "1w", "1M"]
+    preferred_sources: [yfinance, truefx]
+    
+# 数据质量要求配置
+quality_requirements:
+  forex:
+    min_quality: MEDIUM
+    preferred_sources: [truefx, oanda]
+    
+  stock:
+    min_quality: MEDIUM
+    preferred_sources: [yfinance]
+    
+  crypto:
+    min_quality: MEDIUM
+    preferred_sources: [yfinance]

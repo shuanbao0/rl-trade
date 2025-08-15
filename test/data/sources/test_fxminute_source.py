@@ -23,7 +23,7 @@ class TestFXMinuteDataSource(unittest.TestCase):
     def setUpClass(cls):
         """测试类初始化"""
         cls.config = {
-            'data_directory': 'data_cache/FX-1-Minute-Data',
+            'data_directory': 'local_data/FX-1-Minute-Data',
             'auto_extract': True,
             'cache_extracted': True,
             'extracted_cache_dir': 'test_fx_cache'
@@ -33,7 +33,7 @@ class TestFXMinuteDataSource(unittest.TestCase):
     def test_initialization(self):
         """测试数据源初始化"""
         self.assertIsNotNone(self.source)
-        self.assertEqual(self.source.data_directory, Path('data_cache/FX-1-Minute-Data'))
+        self.assertEqual(self.source.data_directory, Path('local_data/FX-1-Minute-Data'))
         self.assertTrue(self.source.auto_extract)
         self.assertTrue(self.source.cache_extracted)
     
@@ -165,8 +165,8 @@ class TestFXMinuteDataSource(unittest.TestCase):
                     self.assertTrue(symbol.islower())  # 应该是小写
     
     @unittest.skipUnless(
-        Path('data_cache/FX-1-Minute-Data/eurusd').exists() and 
-        any(Path('data_cache/FX-1-Minute-Data/eurusd').glob('DAT_ASCII_EURUSD_M1_*.zip')),
+        Path('local_data/FX-1-Minute-Data/eurusd').exists() and 
+        any(Path('local_data/FX-1-Minute-Data/eurusd').glob('DAT_ASCII_EURUSD_M1_*.zip')),
         "需要EUR/USD数据文件进行测试"
     )
     def test_historical_data_fetch(self):
@@ -236,7 +236,7 @@ class TestFXMinuteDataManagerIntegration(unittest.TestCase):
     def test_data_manager_creation(self):
         """测试通过DataManager创建FXMinuteData源"""
         config = {
-            'data_directory': 'data_cache/FX-1-Minute-Data',
+            'data_directory': 'local_data/FX-1-Minute-Data',
             'auto_extract': True,
             'cache_extracted': True
         }
@@ -263,13 +263,13 @@ class TestFXMinuteDataManagerIntegration(unittest.TestCase):
                 raise
     
     @unittest.skipUnless(
-        Path('data_cache/FX-1-Minute-Data').exists(),
+        Path('local_data/FX-1-Minute-Data').exists(),
         "需要FX-1-Minute-Data目录进行集成测试"
     )
     def test_get_stock_data_integration(self):
         """测试通过DataManager获取数据"""
         config = {
-            'data_directory': 'data_cache/FX-1-Minute-Data',
+            'data_directory': 'local_data/FX-1-Minute-Data',
             'auto_extract': True,
             'cache_extracted': True
         }

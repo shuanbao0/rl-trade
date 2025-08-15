@@ -18,6 +18,162 @@ class DataConfig:
     retry_delay: float = 2.0  # 增加基础延迟
     request_timeout: float = 10.0
     
+    # 数据源配置
+    data_source_type: str = "yfinance"  # 默认数据源类型
+    data_source_config: dict = None  # 数据源特定配置
+    
+    # 时间范围配置 (新增)
+    default_period: str = "1y"  # 默认数据周期
+    default_start_date: Optional[str] = None  # 默认开始日期 (YYYY-MM-DD)
+    default_end_date: Optional[str] = None    # 默认结束日期 (YYYY-MM-DD)
+    date_range_priority: str = "period"  # 优先级: "period" 或 "date_range"
+    
+    # 日期范围验证配置
+    min_date_range_days: int = 1    # 最小日期范围（天）
+    max_date_range_days: int = 9125  # 最大日期范围（天，约25年）
+    enable_weekend_data: bool = True  # 是否包含周末数据
+    
+    # 批次下载配置
+    auto_batch_threshold_days: int = 365  # 自动启用批次下载的天数阈值
+    batch_size_days: int = 30  # 默认批次大小（天）
+    enable_batch_resume: bool = True  # 是否启用断点续传
+    
+    def __post_init__(self):
+        if self.data_source_config is None:
+            self.data_source_config = {}
+    
+    def get_data_source_enum(self):
+        """获取数据源枚举对象"""
+        try:
+            from ..data.sources.base import DataSource
+            return DataSource.from_string(self.data_source_type)
+        except (ImportError, ValueError) as e:
+            # 如果导入失败或无效的数据源类型，返回字符串
+            return self.data_source_type
+    
+    def get_default_period_enum(self):
+        """获取默认周期的枚举对象"""
+        try:
+            from ..data.sources.base import DataPeriod
+            return DataPeriod.from_string(self.default_period)
+        except (ImportError, ValueError):
+            return None
+    
+    def get_effective_time_params(self, period=None, start_date=None, end_date=None):
+        """
+        获取有效的时间参数，考虑优先级和默认值
+        
+        Args:
+            period: 显式指定的周期
+            start_date: 显式指定的开始日期
+            end_date: 显式指定的结束日期
+            
+        Returns:
+            Dict: 有效的时间参数
+        """
+        # 应用默认值
+        effective_period = period or self.default_period
+        effective_start_date = start_date or self.default_start_date
+        effective_end_date = end_date or self.default_end_date
+        
+        # 应用优先级逻辑
+        if self.date_range_priority == "date_range":
+            # 优先使用日期范围
+            if effective_start_date and effective_end_date:
+                return {
+                    'period': None,
+                    'start_date': effective_start_date,
+                    'end_date': effective_end_date,
+                    'source': 'date_range'
+                }
+            else:
+                return {
+                    'period': effective_period,
+                    'start_date': None,
+                    'end_date': None,
+                    'source': 'period'
+                }
+        else:
+            # 优先使用周期
+            if effective_period and (not effective_start_date or not effective_end_date):
+                return {
+                    'period': effective_period,
+                    'start_date': None,
+                    'end_date': None,
+                    'source': 'period'
+                }
+            elif effective_start_date and effective_end_date:
+                return {
+                    'period': None,
+                    'start_date': effective_start_date,
+                    'end_date': effective_end_date,
+                    'source': 'date_range'
+                }
+            else:
+                return {
+                    'period': effective_period,
+                    'start_date': None,
+                    'end_date': None,
+                    'source': 'period'
+                }
+    
+    def validate_date_range_config(self):
+        """
+        验证日期范围配置的有效性
+        
+        Returns:
+            Tuple[bool, List[str]]: (是否有效, 错误消息列表)
+        """
+        errors = []
+        
+        # 检查日期格式
+        if self.default_start_date:
+            try:
+                from datetime import datetime
+                datetime.strptime(self.default_start_date, '%Y-%m-%d')
+            except ValueError:
+                errors.append(f"Invalid default_start_date format: {self.default_start_date}")
+        
+        if self.default_end_date:
+            try:
+                from datetime import datetime
+                datetime.strptime(self.default_end_date, '%Y-%m-%d')
+            except ValueError:
+                errors.append(f"Invalid default_end_date format: {self.default_end_date}")
+        
+        # 检查日期范围逻辑
+        if self.default_start_date and self.default_end_date:
+            try:
+                from datetime import datetime
+                start = datetime.strptime(self.default_start_date, '%Y-%m-%d')
+                end = datetime.strptime(self.default_end_date, '%Y-%m-%d')
+                
+                if start >= end:
+                    errors.append("default_start_date must be earlier than default_end_date")
+                
+                days_diff = (end - start).days
+                if days_diff < self.min_date_range_days:
+                    errors.append(f"Date range too short: {days_diff} < {self.min_date_range_days} days")
+                
+                if days_diff > self.max_date_range_days:
+                    errors.append(f"Date range too long: {days_diff} > {self.max_date_range_days} days")
+                    
+            except ValueError:
+                pass  # 日期格式错误已在上面检查
+        
+        # 检查优先级设置
+        if self.date_range_priority not in ["period", "date_range"]:
+            errors.append(f"Invalid date_range_priority: {self.date_range_priority}")
+        
+        # 检查批次配置
+        if self.auto_batch_threshold_days <= 0:
+            errors.append(f"auto_batch_threshold_days must be positive: {self.auto_batch_threshold_days}")
+        
+        if self.batch_size_days <= 0:
+            errors.append(f"batch_size_days must be positive: {self.batch_size_days}")
+        
+        return len(errors) == 0, errors
+    
 
 @dataclass
 class FeatureConfig:
@@ -290,6 +446,24 @@ class Config:
         if os.getenv('DATA_CACHE_EXPIRY_HOURS'):
             self.data.cache_expiry_hours = int(os.getenv('DATA_CACHE_EXPIRY_HOURS'))
         
+        # 时间范围配置环境变量 (新增)
+        if os.getenv('DEFAULT_PERIOD'):
+            self.data.default_period = os.getenv('DEFAULT_PERIOD')
+        if os.getenv('DEFAULT_START_DATE'):
+            self.data.default_start_date = os.getenv('DEFAULT_START_DATE')
+        if os.getenv('DEFAULT_END_DATE'):
+            self.data.default_end_date = os.getenv('DEFAULT_END_DATE')
+        if os.getenv('DATE_RANGE_PRIORITY'):
+            self.data.date_range_priority = os.getenv('DATE_RANGE_PRIORITY')
+        
+        # 批次下载配置环境变量 (新增)
+        if os.getenv('AUTO_BATCH_THRESHOLD_DAYS'):
+            self.data.auto_batch_threshold_days = int(os.getenv('AUTO_BATCH_THRESHOLD_DAYS'))
+        if os.getenv('BATCH_SIZE_DAYS'):
+            self.data.batch_size_days = int(os.getenv('BATCH_SIZE_DAYS'))
+        if os.getenv('ENABLE_BATCH_RESUME'):
+            self.data.enable_batch_resume = os.getenv('ENABLE_BATCH_RESUME').lower() == 'true'
+        
         # 交易配置环境变量
         if os.getenv('INITIAL_BALANCE'):
             self.trading.initial_balance = float(os.getenv('INITIAL_BALANCE'))
@@ -379,4 +553,20 @@ class Config:
         if 'initial_balance' not in reward_params:
             reward_params['initial_balance'] = self.trading.initial_balance
         
-        return create_reward_function(target_type, **reward_params) 
+        return create_reward_function(target_type, **reward_params)
+    
+    def create_data_manager(self):
+        """
+        根据配置创建DataManager实例
+        
+        Returns:
+            DataManager: 数据管理器实例
+        """
+        # 延迟导入避免循环依赖
+        from ..data.data_manager import DataManager
+        
+        return DataManager(
+            config=self,
+            data_source_type=self.data.get_data_source_enum(),
+            data_source_config=self.data.data_source_config
+        ) 

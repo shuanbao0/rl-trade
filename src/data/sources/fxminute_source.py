@@ -18,7 +18,7 @@ import numpy as np
 
 from .base import (
     AbstractDataSource, DataInterval, MarketType, MarketData, 
-    DataSourceCapabilities, DataQuality
+    DataSourceCapabilities, DataQuality, DataSource
 )
 from .converter import DataConverter
 
@@ -30,7 +30,7 @@ class FXMinuteDataSource(AbstractDataSource):
         super().__init__(config)
         
         # 基础配置
-        self.data_directory = Path(config.get('data_directory', 'data_cache/FX-1-Minute-Data'))
+        self.data_directory = Path(config.get('data_directory', 'local_data/FX-1-Minute-Data'))
         self.auto_extract = config.get('auto_extract', True)
         self.cache_extracted = config.get('cache_extracted', True)
         self.extracted_cache_dir = Path(config.get('extracted_cache_dir', 'fx_minute_cache'))
@@ -468,6 +468,7 @@ class FXMinuteDataSource(AbstractDataSource):
         """获取数据源能力"""
         return DataSourceCapabilities(
             name="FX-1-Minute-Data",
+            source_id=DataSource.FXMINUTE,
             supported_markets=[
                 MarketType.FOREX,
                 MarketType.COMMODITIES,
