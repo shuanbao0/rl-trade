@@ -6,10 +6,13 @@
 from .cache_manager import get_cache_manager, CacheKey
 from .routing_manager import get_routing_manager
 from .batch_downloader import BatchDownloader
+from .dataset_manager import get_dataset_manager, DatasetManager
 
 __all__ = [
     'get_cache_manager',
     'CacheKey', 
     'get_routing_manager',
-    'BatchDownloader'
+    'BatchDownloader',
+    'get_dataset_manager',
+    'DatasetManager'
 ]
